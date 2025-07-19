@@ -111,7 +111,7 @@ function getStyleMeasurements(product: Product, configuration: ProductConfigurat
 function isCustomBrandingSelected(configuration: ProductConfiguration): boolean {
   // Check if any branding option other than 'none' is selected
   const brandingSelection = configuration.selections.branding
-  return brandingSelection && brandingSelection !== '' && brandingSelection !== 'none'
+  return Boolean(brandingSelection) && brandingSelection !== '' && brandingSelection !== 'none'
 }
 
 // Get configuration validation errors

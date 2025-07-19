@@ -61,42 +61,46 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
           
           {/* Available Materials */}
-          <div className="flex flex-wrap gap-1">
-            {product.materials.slice(0, 3).map((material, index) => (
-              <span
-                key={material.name}
-                className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
-              >
-                {material.name}
-              </span>
-            ))}
-            {product.materials.length > 3 && (
-              <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                +{product.materials.length - 3} more
-              </span>
-            )}
-          </div>
+          {product.materials && product.materials.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {product.materials.slice(0, 3).map((material, index) => (
+                <span
+                  key={material.name}
+                  className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
+                >
+                  {material.name}
+                </span>
+              ))}
+              {product.materials.length > 3 && (
+                <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+                  +{product.materials.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Color Swatches */}
-        <div className="mb-4">
-          <p className="text-xs text-gray-500 mb-2">Available Colors:</p>
-          <div className="flex gap-1">
-            {product.colors.slice(0, 6).map((color) => (
-              <div
-                key={color.value}
-                className="w-4 h-4 rounded-full border border-gray-200 ring-1 ring-white"
-                style={{ backgroundColor: color.hex }}
-                title={color.name}
-              />
-            ))}
-            {product.colors.length > 6 && (
-              <div className="w-4 h-4 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center">
-                <span className="text-xs text-gray-600">+</span>
-              </div>
-            )}
+        {product.colors && product.colors.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-2">Available Colors:</p>
+            <div className="flex gap-1">
+              {product.colors.slice(0, 6).map((color) => (
+                <div
+                  key={color.value}
+                  className="w-4 h-4 rounded-full border border-gray-200 ring-1 ring-white"
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                />
+              ))}
+              {product.colors.length > 6 && (
+                <div className="w-4 h-4 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <span className="text-xs text-gray-600">+</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Stock Status */}
         <div className="mb-4">

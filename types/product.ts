@@ -20,6 +20,8 @@ export interface Product {
   fileUploads: FileUpload[]
   specialRequests?: SpecialRequests
   measurementTips?: string[]
+  // Product type for complex vs simple products
+  productType?: 'simple' | 'complex'
   // Legacy support for backward compatibility
   materials?: Material[]
   colors?: Color[]
@@ -128,6 +130,12 @@ export interface CartItem {
   uploadedFiles?: UploadedFile[]
   specialRequests?: string
   price: number
+  // Additional properties used in cart components
+  width: number
+  height: number
+  material: string
+  color: string
+  addons: { [key: string]: boolean }
 }
 
 export interface UploadedFile {

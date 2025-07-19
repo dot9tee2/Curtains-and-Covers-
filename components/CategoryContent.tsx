@@ -44,7 +44,7 @@ export default function CategoryContent({ products, categoryName, categorySlug }
     const addons = new Set<string>()
 
     products.forEach(product => {
-      product.materials.forEach(material => materials.add(material.name))
+      product.materials?.forEach(material => materials.add(material.name))
     })
 
     // Add common addons
@@ -65,7 +65,7 @@ export default function CategoryContent({ products, categoryName, categorySlug }
     // Filter by materials
     if (filters.materials.length > 0) {
       filtered = filtered.filter(product =>
-        product.materials.some(material => filters.materials.includes(material.name))
+        product.materials?.some(material => filters.materials.includes(material.name)) || false
       )
     }
 
