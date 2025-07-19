@@ -111,7 +111,7 @@ function getStyleMeasurements(product: Product, configuration: ProductConfigurat
 function isCustomBrandingSelected(configuration: ProductConfiguration): boolean {
   // Check if any branding option other than 'none' is selected
   const brandingSelection = configuration.selections.branding
-  return brandingSelection && brandingSelection !== 'none'
+  return brandingSelection && brandingSelection !== '' && brandingSelection !== 'none'
 }
 
 // Get configuration validation errors
@@ -141,7 +141,7 @@ function getConfigurationErrors(
     // Check required features
     if (product.variations.features) {
       Object.entries(product.variations.features).forEach(([key, feature]) => {
-        if (feature.required && !configuration.selections[key]) {
+        if (feature.required && (!configuration.selections[key] || configuration.selections[key] === '')) {
           errors.push(`${feature.label || key} selection is required`)
         }
       })
@@ -209,6 +209,23 @@ export default function ProductConfigurator({
     onConfigurationChange?.(configuration, newPricing)
   }, [configuration, product, onConfigurationChange])
 
+  // Auto-navigate away from uploads section if custom branding is deselected
+  useEffect(() => {
+    if (activeSection === 'uploads' && !isCustomBrandingSelected(configuration)) {
+      setActiveSection('features')
+    }
+  }, [configuration.selections.branding, activeSection])
+
+  // Clear uploaded files when custom branding is deselected
+  useEffect(() => {
+    if (!isCustomBrandingSelected(configuration) && configuration.files.length > 0) {
+      setConfiguration(prev => ({
+        ...prev,
+        files: []
+      }))
+    }
+  }, [configuration.selections.branding])
+
   const updateSelection = (key: string, value: string) => {
     setConfiguration(prev => ({
       ...prev,
@@ -255,7 +272,7 @@ export default function ProductConfigurator({
     { id: 'color', name: 'Color', required: product.variations?.colors?.required },
     { id: 'features', name: 'Features', required: false },
     { id: 'measurements', name: 'Measurements', required: getStyleMeasurements(product, configuration).some(m => m.required) },
-    { id: 'uploads', name: 'Files', required: product.fileUploads?.some(f => f.required) },
+    ...(isCustomBrandingSelected(configuration) ? [{ id: 'uploads', name: 'Files', required: true }] : []),
     { id: 'requests', name: 'Special Requests', required: false }
   ]
 
@@ -269,13 +286,20 @@ export default function ProductConfigurator({
             const isCompleted = section.id === 'style' && configuration.selections.style ||
                               section.id === 'material' && configuration.selections.material ||
                               section.id === 'color' && configuration.selections.color ||
-                              section.id === 'features' && true ||
+                              section.id === 'features' && (() => {
+                                // Features section is always completed since it's optional
+                                // Users can choose to select or not select features
+                                return true
+                              })() ||
                               section.id === 'measurements' && (() => {
                                 const styleMeasurements = getStyleMeasurements(product, configuration)
                                 if (styleMeasurements.length === 0) return true // No measurements required
                                 return styleMeasurements.every(m => !m.required || configuration.measurements[m.id])
                               })() ||
-                              section.id === 'uploads' && configuration.files.length > 0 ||
+                              section.id === 'uploads' && (() => {
+                                if (!isCustomBrandingSelected(configuration)) return true // Not required
+                                return configuration.files.length > 0
+                              })() ||
                               section.id === 'requests' && true
 
             return (
@@ -335,6 +359,28 @@ export default function ProductConfigurator({
           {/* Feature Selections */}
           {activeSection === 'features' && product.variations?.features && (
             <div className="space-y-6">
+              {/* Optional Features Notice */}
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                <div className="flex items-center">
+                  <svg
+                    className="w-5 h-5 text-gray-400 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="text-sm text-gray-600">
+                    All features are optional. You can select any combination or skip them entirely.
+                  </span>
+                </div>
+              </div>
+              
               {Object.entries(product.variations.features).map(([key, feature]) => (
                 <FeatureSelector
                   key={key}
@@ -394,17 +440,53 @@ export default function ProductConfigurator({
           )}
 
           {/* File Uploads */}
-          {activeSection === 'uploads' && product.fileUploads && (
-            <div className="space-y-4">
-              {product.fileUploads.map((upload) => (
-                <FileUpload
-                  key={upload.id}
-                  uploadConfig={upload}
-                  files={configuration.files.filter(f => f.id === upload.id)}
-                  onChange={updateFiles}
-                />
-              ))}
-            </div>
+          {activeSection === 'uploads' && (
+            <>
+              {!isCustomBrandingSelected(configuration) ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">File Uploads</h3>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-6 text-center">
+                    <svg
+                      className="w-12 h-12 text-blue-400 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <h4 className="text-lg font-medium text-blue-900 mb-2">No File Uploads Required</h4>
+                    <p className="text-blue-800 mb-4">
+                      File uploads are only required when custom branding is selected. Please select a custom branding option in the Features section to upload your logo or design files.
+                    </p>
+                    <button
+                      onClick={() => setActiveSection('features')}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-800 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Go to Features
+                    </button>
+                  </div>
+                </div>
+              ) : product.fileUploads && (
+                <div className="space-y-4">
+                  {product.fileUploads.map((upload) => (
+                    <FileUpload
+                      key={upload.id}
+                      uploadConfig={upload}
+                      files={configuration.files.filter(f => f.id === upload.id)}
+                      onChange={updateFiles}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {/* Special Requests */}
