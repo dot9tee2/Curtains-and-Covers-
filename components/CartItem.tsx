@@ -51,7 +51,7 @@ export default function CartItem({ item }: CartItemProps) {
   }
 
   const calculateArea = () => {
-    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0)
+    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0) as number[]
     
     if (measurements.length === 0) {
       // Fallback to width and height if no measurements
@@ -94,7 +94,7 @@ export default function CartItem({ item }: CartItemProps) {
   }
 
   const formatMeasurementsDisplay = () => {
-    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0)
+    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0) as number[]
     
     if (measurements.length === 0) {
       // Fallback to width and height if no measurements
