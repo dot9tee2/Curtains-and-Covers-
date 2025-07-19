@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Product, ProductConfiguration, PriceCalculationResult, PriceBreakdown, Measurement, UploadedFile } from '@/types/product'
 import StyleSelector from './configurator/StyleSelector'
 import ColorSelector from './configurator/ColorSelector'
+import MaterialSelector from './configurator/MaterialSelector'
 import FeatureSelector from './configurator/FeatureSelector'
 import MeasurementForm from './configurator/MeasurementForm'
 import FileUpload from './configurator/FileUpload'
@@ -14,6 +15,8 @@ interface ProductConfiguratorProps {
   product: Product
   onConfigurationChange?: (config: ProductConfiguration, pricing: PriceCalculationResult) => void
   onAddToCart?: (config: ProductConfiguration, pricing: PriceCalculationResult) => void
+  isAddingToCart?: boolean
+  showSuccess?: boolean
 }
 
 // Simple price calculation function
@@ -34,13 +37,51 @@ function calculateProductPrice(
     }
 
     // Calculate material price
-    if (configuration.selections.material && product.variations?.materials) {
-      const selectedMaterial = product.variations.materials.options.find(
-        m => m.id === configuration.selections.material
-      )
+    if (configuration.selections.material) {
+      let selectedMaterial = null
+      
+      // Check new variations structure first
+      if (product.variations?.materials) {
+        selectedMaterial = product.variations.materials.options.find(
+          m => m.id === configuration.selections.material
+        )
+      }
+      
+      // Fall back to legacy materials structure
+      if (!selectedMaterial && product.materials) {
+        selectedMaterial = product.materials.find(
+          m => (m.name?.toLowerCase().replace(/\s+/g, '-') || m.id) === configuration.selections.material
+        )
+      }
+      
       if (selectedMaterial) {
-        breakdown.materialPrice = selectedMaterial.price
-        totalPrice += selectedMaterial.price
+        breakdown.materialPrice = selectedMaterial.price || 0
+        totalPrice += selectedMaterial.price || 0
+      }
+    }
+
+    // Calculate color price (if any)
+    if (configuration.selections.color) {
+      let selectedColor = null
+      
+      // Check new variations structure first
+      if (product.variations?.colors) {
+        selectedColor = product.variations.colors.options.find(
+          c => c.id === configuration.selections.color
+        )
+      }
+      
+      // Fall back to legacy colors structure
+      if (!selectedColor && product.colors) {
+        selectedColor = product.colors.find(
+          c => (c.name?.toLowerCase().replace(/\s+/g, '-') || c.id) === configuration.selections.color
+        )
+      }
+      
+      if (selectedColor && selectedColor.price > 0) {
+        breakdown.variationPrices!['color'] = selectedColor.price
+        breakdown.addOnsTotal += selectedColor.price
+        totalPrice += selectedColor.price
       }
     }
 
@@ -129,12 +170,12 @@ function getConfigurationErrors(
     }
 
     // Check required materials
-    if (product.variations.materials?.required && !configuration.selections.material) {
+    if ((product.variations?.materials?.required || product.materials?.length > 0) && !configuration.selections.material) {
       errors.push('Material selection is required')
     }
 
     // Check required colors
-    if (product.variations.colors?.required && !configuration.selections.color) {
+    if ((product.variations?.colors?.required || product.colors?.length > 0) && !configuration.selections.color) {
       errors.push('Color selection is required')
     }
 
@@ -176,7 +217,9 @@ function getConfigurationErrors(
 export default function ProductConfigurator({ 
   product, 
   onConfigurationChange,
-  onAddToCart 
+  onAddToCart,
+  isAddingToCart = false,
+  showSuccess = false
 }: ProductConfiguratorProps) {
   const [configuration, setConfiguration] = useState<ProductConfiguration>({
     productId: product.id,
@@ -268,8 +311,8 @@ export default function ProductConfigurator({
 
   const sections = [
     { id: 'style', name: 'Style', required: product.variations?.styles?.required },
-    { id: 'material', name: 'Material', required: product.variations?.materials?.required },
-    { id: 'color', name: 'Color', required: product.variations?.colors?.required },
+    { id: 'material', name: 'Material', required: product.variations?.materials?.required || product.materials?.length > 0 },
+    { id: 'color', name: 'Color', required: product.variations?.colors?.required || product.colors?.length > 0 },
     { id: 'features', name: 'Features', required: false },
     { id: 'measurements', name: 'Measurements', required: getStyleMeasurements(product, configuration).some(m => m.required) },
     ...(isCustomBrandingSelected(configuration) ? [{ id: 'uploads', name: 'Files', required: true }] : []),
@@ -284,8 +327,8 @@ export default function ProductConfigurator({
           {sections.map((section) => {
             const isActive = activeSection === section.id
             const isCompleted = section.id === 'style' && configuration.selections.style ||
-                              section.id === 'material' && configuration.selections.material ||
-                              section.id === 'color' && configuration.selections.color ||
+                              section.id === 'material' && (configuration.selections.material || !(product.variations?.materials?.required || product.materials?.length > 0)) ||
+                              section.id === 'color' && (configuration.selections.color || !(product.variations?.colors?.required || product.colors?.length > 0)) ||
                               section.id === 'features' && (() => {
                                 // Features section is always completed since it's optional
                                 // Users can choose to select or not select features
@@ -335,22 +378,37 @@ export default function ProductConfigurator({
           )}
 
           {/* Material Selection */}
-          {activeSection === 'material' && product.variations?.materials && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Choose Material
-                  {product.variations.materials.required && <span className="text-red-500 ml-1">*</span>}
-                </h3>
-              </div>
-              <p className="text-gray-600">Material selection component will be implemented here.</p>
-            </div>
+          {activeSection === 'material' && (product.variations?.materials || product.materials?.length > 0) && (
+            <MaterialSelector
+              options={product.variations?.materials || {
+                required: true,
+                options: product.materials?.map((material: any) => ({
+                  id: material.name?.toLowerCase().replace(/\s+/g, '-') || material.id,
+                  name: material.name,
+                  price: material.price || 0,
+                  description: material.description,
+                  image: material.image,
+                  properties: material.properties
+                })) || []
+              }}
+              selected={configuration.selections.material}
+              onChange={(value) => updateSelection('material', value)}
+            />
           )}
 
           {/* Color Selection */}
-          {activeSection === 'color' && product.variations?.colors && (
+          {activeSection === 'color' && (product.variations?.colors || product.colors?.length > 0) && (
             <ColorSelector
-              options={product.variations.colors}
+              options={product.variations?.colors || {
+                required: true,
+                options: product.colors?.map((color: any) => ({
+                  id: color.name?.toLowerCase().replace(/\s+/g, '-') || color.id,
+                  name: color.name,
+                  hex: color.hex || color.hexCode,
+                  price: color.price || 0,
+                  image: color.image
+                })) || []
+              }}
               selected={configuration.selections.color}
               onChange={(value) => updateSelection('color', value)}
             />
@@ -524,18 +582,45 @@ export default function ProductConfigurator({
             {/* Add to Cart Button */}
             <button
               onClick={handleAddToCart}
-              disabled={!pricing.isValid}
+              disabled={!pricing.isValid || isAddingToCart}
               className={`w-full mt-6 py-3 px-4 rounded-md font-medium ${
-                pricing.isValid
+                pricing.isValid && !isAddingToCart
                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {pricing.isValid ? 'Add to Cart' : 'Complete Configuration'}
+              {isAddingToCart ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding to Cart...
+                </div>
+              ) : (
+                pricing.isValid ? 'Add to Cart' : 'Complete Configuration'
+              )}
             </button>
 
+            {/* Success Message */}
+            {showSuccess && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm font-medium text-green-800">
+                    Product added to cart successfully!
+                  </span>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  Redirecting to cart...
+                </p>
+              </div>
+            )}
+
             {/* Continue to Next Section */}
-            {pricing.isValid && (
+            {pricing.isValid && !showSuccess && (
               <div className="mt-4 text-center">
                 <p className="text-sm text-green-600 font-medium">
                   ✓ Configuration Complete

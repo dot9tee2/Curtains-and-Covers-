@@ -11,11 +11,30 @@ interface MaterialSelectorProps {
 }
 
 export default function MaterialSelector({ options, selected, onChange }: MaterialSelectorProps) {
+  
   const formatPrice = (price: number, currency = 'EUR') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency
     }).format(price)
+  }
+
+  // Check if options exist and have options array
+  if (!options || !options.options || options.options.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-gray-900">
+            Choose Material
+            {options?.required && <span className="text-red-500 ml-1">*</span>}
+          </h3>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-6 text-center">
+          <p className="text-yellow-800">No materials available for this product.</p>
+          <p className="text-sm text-yellow-600 mt-2">Debug info: {JSON.stringify(options)}</p>
+        </div>
+      </div>
+    )
   }
 
   return (

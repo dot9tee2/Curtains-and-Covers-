@@ -26,6 +26,88 @@ export default function CartItem({ item }: CartItemProps) {
     return addon.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
   }
 
+  const formatMeasurementName = (key: string) => {
+    // Handle common measurement names
+    const measurementNames: { [key: string]: string } = {
+      'width': 'Width',
+      'height': 'Height',
+      'length': 'Length',
+      'depth': 'Depth',
+      'diameter': 'Diameter',
+      'radius': 'Radius',
+      'side-1': 'Side 1',
+      'side-2': 'Side 2',
+      'side-3': 'Side 3',
+      'side-4': 'Side 4',
+      'side-5': 'Side 5',
+      'side-6': 'Side 6',
+      'side-7': 'Side 7',
+      'side-8': 'Side 8',
+      'circumference': 'Circumference',
+      'perimeter': 'Perimeter'
+    }
+    
+    return measurementNames[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+  }
+
+  const calculateArea = () => {
+    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0)
+    
+    if (measurements.length === 0) {
+      // Fallback to width and height if no measurements
+      if (item.width > 0 && item.height > 0) {
+        return (item.width * item.height / 144).toFixed(1)
+      }
+      return '0.0'
+    }
+    
+    if (measurements.length === 1) {
+      // Single measurement (like diameter for round covers)
+      const diameter = measurements[0]
+      const radius = diameter / 2
+      const area = Math.PI * radius * radius / 144 // Convert to sq ft
+      return area.toFixed(1)
+    }
+    
+    if (measurements.length === 2) {
+      // Two measurements (width × height or length × width)
+      const [first, second] = measurements
+      return ((first * second) / 144).toFixed(1)
+    }
+    
+    if (measurements.length === 3) {
+      // Three measurements (length × width × height)
+      const [first, second, third] = measurements
+      return ((first * second * third) / 144).toFixed(1)
+    }
+    
+    if (measurements.length === 4) {
+      // Four measurements - could be a complex shape
+      // For now, use the first two measurements as length and width
+      const [first, second] = measurements.slice(0, 2)
+      return ((first * second) / 144).toFixed(1)
+    }
+    
+    // For more than 4 measurements, use the first two as length and width
+    const [first, second] = measurements.slice(0, 2)
+    return ((first * second) / 144).toFixed(1)
+  }
+
+  const formatMeasurementsDisplay = () => {
+    const measurements = Object.values(item.measurements).filter(val => typeof val === 'number' && val > 0)
+    
+    if (measurements.length === 0) {
+      // Fallback to width and height if no measurements
+      if (item.width > 0 && item.height > 0) {
+        return `${item.width}" × ${item.height}"`
+      }
+      return null
+    }
+    
+    // Return measurements in format: "20" × 30" × 20" × 50""
+    return measurements.map(m => `${m}"`).join(' × ')
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-start space-x-4">
@@ -56,29 +138,58 @@ export default function CartItem({ item }: CartItemProps) {
               </h3>
               
               {/* Customization Details */}
-              <div className="mt-2 space-y-1 text-sm text-gray-600">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="mt-2 space-y-2 text-sm text-gray-600">
+                {/* Measurements */}
+                {formatMeasurementsDisplay() && (
                   <div>
-                    <span className="font-medium">Size:</span> {item.width}" × {item.height}"
+                    <span className="font-medium text-gray-700">Size:</span> {formatMeasurementsDisplay()}
+                  </div>
+                )}
+                
+                {/* Material and Color */}
+                <div className="grid grid-cols-2 gap-x-4">
+                  <div>
+                    <span className="font-medium text-gray-700">Material:</span> {item.material}
                   </div>
                   <div>
-                    <span className="font-medium">Material:</span> {item.material}
+                    <span className="font-medium text-gray-700">Color:</span> {item.color}
                   </div>
-                  <div>
-                    <span className="font-medium">Color:</span> {item.color}
-                  </div>
-                  {selectedAddons.length > 0 && (
-                    <div className="col-span-2">
-                      <span className="font-medium">Add-ons:</span> {selectedAddons.map(formatAddonName).join(', ')}
-                    </div>
-                  )}
                 </div>
+                
+                {/* Add-ons */}
+                {selectedAddons.length > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-700">Add-ons:</span> {selectedAddons.map(formatAddonName).join(', ')}
+                  </div>
+                )}
+                
+                {/* Special Requests */}
+                {item.specialRequests && (
+                  <div>
+                    <span className="font-medium text-gray-700">Special Requests:</span> {item.specialRequests}
+                  </div>
+                )}
+                
+                {/* Uploaded Files */}
+                {item.uploadedFiles && item.uploadedFiles.length > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-700">Files:</span> {item.uploadedFiles.length} file{item.uploadedFiles.length !== 1 ? 's' : ''} uploaded
+                  </div>
+                )}
               </div>
 
-              {/* Area Calculation */}
-              <div className="mt-2 text-xs text-gray-500">
-                Area: {(item.width * item.height / 144).toFixed(1)} sq ft
-              </div>
+              {/* Area Calculation - dynamic based on measurements */}
+              {(() => {
+                const area = calculateArea()
+                if (area !== '0.0') {
+                  return (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Area: {area} sq ft
+                    </div>
+                  )
+                }
+                return null
+              })()}
             </div>
 
             {/* Remove Button */}
