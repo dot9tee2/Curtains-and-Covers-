@@ -17,67 +17,150 @@ export function urlForImage(source: any) {
   return builder.image(source)
 }
 
+// Enhanced product query with all complex fields
+const enhancedProductQuery = `
+  _id,
+  title,
+  slug,
+  sku,
+  productType,
+  description,
+  shortDescription,
+  basePrice,
+  currency,
+  tags,
+  featured,
+  inStock,
+  image,
+  gallery,
+  materials,
+  colors,
+  addons,
+  variations {
+    styles {
+      required,
+      options[] {
+        id,
+        name,
+        description,
+        image,
+        measurements[] {
+          id,
+          name,
+          required,
+          unit,
+          placeholder,
+          type
+        }
+      }
+    },
+    materials {
+      required,
+      options[] {
+        id,
+        name,
+        price,
+        description,
+        image,
+        properties {
+          weight,
+          warranty,
+          useCase,
+          waterproof,
+          uvResistant
+        }
+      }
+    },
+    colors {
+      required,
+      options[] {
+        id,
+        name,
+        hex,
+        price,
+        image
+      }
+    },
+    features {
+      tieDowns {
+        required,
+        label,
+        options[] {
+          id,
+          name,
+          price,
+          description
+        }
+      },
+      splits {
+        required,
+        label,
+        options[] {
+          id,
+          name,
+          price,
+          description
+        }
+      },
+      branding {
+        required,
+        label,
+        options[] {
+          id,
+          name,
+          price,
+          description
+        }
+      }
+    }
+  },
+
+  measurementTips,
+  fileUploads[] {
+    id,
+    name,
+    required,
+    acceptedTypes,
+    maxSize,
+    description
+  },
+  specialRequests {
+    enabled,
+    placeholder
+  },
+  category->{
+    _id,
+    title,
+    slug,
+    description
+  },
+  seo {
+    metaTitle,
+    metaDescription,
+    keywords
+  }
+`
+
 // GROQ queries for fetching data
 export const queries = {
   // Get all products
   allProducts: `*[_type == "product"] | order(_createdAt desc) {
-    _id,
-    title,
-    slug,
-    description,
-    basePrice,
-    materials,
-    colors,
-    addons,
-    featured,
-    inStock,
-    image,
-    category->{
-      _id,
-      title,
-      slug
-    }
+    ${enhancedProductQuery}
   }`,
 
   // Get featured products
   featuredProducts: `*[_type == "product" && featured == true] | order(_createdAt desc) {
-    _id,
-    title,
-    slug,
-    description,
-    basePrice,
-    materials,
-    colors,
-    addons,
-    featured,
-    inStock,
-    image,
-    category->{
-      _id,
-      title,
-      slug
-    }
+    ${enhancedProductQuery}
   }`,
 
   // Get single product by slug
   productBySlug: `*[_type == "product" && slug.current == $slug][0] {
-    _id,
-    title,
-    slug,
-    description,
-    basePrice,
-    materials,
-    colors,
-    addons,
-    featured,
-    inStock,
-    image,
-    category->{
-      _id,
-      title,
-      slug,
-      description
-    }
+    ${enhancedProductQuery}
+  }`,
+
+  // Get products by type
+  productsByType: `*[_type == "product" && productType == $productType] | order(_createdAt desc) {
+    ${enhancedProductQuery}
   }`,
 
   // Get all categories
@@ -102,22 +185,7 @@ export const queries = {
 
   // Get products by category
   productsByCategory: `*[_type == "product" && category->slug.current == $category] | order(_createdAt desc) {
-    _id,
-    title,
-    slug,
-    description,
-    basePrice,
-    materials,
-    colors,
-    addons,
-    featured,
-    inStock,
-    image,
-    category->{
-      _id,
-      title,
-      slug
-    }
+    ${enhancedProductQuery}
   }`,
 
   // Get all blog posts
@@ -186,6 +254,10 @@ export async function getFeaturedProducts() {
 
 export async function getProductBySlug(slug: string) {
   return await client.fetch(queries.productBySlug, { slug })
+}
+
+export async function getProductsByType(productType: 'simple' | 'complex') {
+  return await client.fetch(queries.productsByType, { productType })
 }
 
 export async function getCategories() {

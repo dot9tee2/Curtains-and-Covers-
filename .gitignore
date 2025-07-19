@@ -92,3 +92,6 @@ sanity-backend/dist/
 # Backup files
 *.bak
 *.backup 
+
+# guide folder 
+guide/
