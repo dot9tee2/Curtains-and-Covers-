@@ -63,7 +63,7 @@ export default function CartItem({ item }: CartItemProps) {
     
     if (measurements.length === 1) {
       // Single measurement (like diameter for round covers)
-      const diameter = measurements[0]
+      const diameter = measurements[0] as number
       const radius = diameter / 2
       const area = Math.PI * radius * radius / 144 // Convert to sq ft
       return area.toFixed(1)
@@ -72,25 +72,25 @@ export default function CartItem({ item }: CartItemProps) {
     if (measurements.length === 2) {
       // Two measurements (width × height or length × width)
       const [first, second] = measurements
-      return ((first * second) / 144).toFixed(1)
+      return (((first as number) * (second as number)) / 144).toFixed(1)
     }
     
     if (measurements.length === 3) {
       // Three measurements (length × width × height)
       const [first, second, third] = measurements
-      return ((first * second * third) / 144).toFixed(1)
+      return (((first as number) * (second as number) * (third as number)) / 144).toFixed(1)
     }
     
     if (measurements.length === 4) {
       // Four measurements - could be a complex shape
       // For now, use the first two measurements as length and width
       const [first, second] = measurements.slice(0, 2)
-      return ((first * second) / 144).toFixed(1)
+      return (((first as number) * (second as number)) / 144).toFixed(1)
     }
     
     // For more than 4 measurements, use the first two as length and width
     const [first, second] = measurements.slice(0, 2)
-    return ((first * second) / 144).toFixed(1)
+    return (((first as number) * (second as number)) / 144).toFixed(1)
   }
 
   const formatMeasurementsDisplay = () => {
