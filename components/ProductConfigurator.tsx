@@ -54,7 +54,7 @@ function calculateProductPrice(
         )
       }
       
-      if (selectedMaterial) {
+      if (selectedMaterial && selectedMaterial.price !== undefined) {
         breakdown.materialPrice = selectedMaterial.price || 0
         totalPrice += selectedMaterial.price || 0
       }
@@ -78,7 +78,7 @@ function calculateProductPrice(
         )
       }
       
-      if (selectedColor && selectedColor.price > 0) {
+      if (selectedColor && selectedColor.price && selectedColor.price > 0) {
         breakdown.variationPrices!['color'] = selectedColor.price
         breakdown.addOnsTotal += selectedColor.price
         totalPrice += selectedColor.price
@@ -91,7 +91,7 @@ function calculateProductPrice(
         const selectedOptionId = configuration.selections[featureKey]
         if (selectedOptionId) {
           const selectedOption = feature.options.find(option => option.id === selectedOptionId)
-          if (selectedOption && selectedOption.price > 0) {
+          if (selectedOption && selectedOption.price && selectedOption.price > 0) {
             breakdown.variationPrices![featureKey] = selectedOption.price
             breakdown.addOnsTotal += selectedOption.price
             totalPrice += selectedOption.price
@@ -170,12 +170,12 @@ function getConfigurationErrors(
     }
 
     // Check required materials
-    if ((product.variations?.materials?.required || product.materials?.length > 0) && !configuration.selections.material) {
+    if ((product.variations?.materials?.required || (product.materials && product.materials.length > 0)) && !configuration.selections.material) {
       errors.push('Material selection is required')
     }
 
     // Check required colors
-    if ((product.variations?.colors?.required || product.colors?.length > 0) && !configuration.selections.color) {
+    if ((product.variations?.colors?.required || (product.colors && product.colors.length > 0)) && !configuration.selections.color) {
       errors.push('Color selection is required')
     }
 
@@ -311,8 +311,8 @@ export default function ProductConfigurator({
 
   const sections = [
     { id: 'style', name: 'Style', required: product.variations?.styles?.required },
-    { id: 'material', name: 'Material', required: product.variations?.materials?.required || product.materials?.length > 0 },
-    { id: 'color', name: 'Color', required: product.variations?.colors?.required || product.colors?.length > 0 },
+    { id: 'material', name: 'Material', required: product.variations?.materials?.required || (product.materials && product.materials.length > 0) },
+    { id: 'color', name: 'Color', required: product.variations?.colors?.required || (product.colors && product.colors.length > 0) },
     { id: 'features', name: 'Features', required: false },
     { id: 'measurements', name: 'Measurements', required: getStyleMeasurements(product, configuration).some(m => m.required) },
     ...(isCustomBrandingSelected(configuration) ? [{ id: 'uploads', name: 'Files', required: true }] : []),
@@ -327,8 +327,8 @@ export default function ProductConfigurator({
           {sections.map((section) => {
             const isActive = activeSection === section.id
             const isCompleted = section.id === 'style' && configuration.selections.style ||
-                              section.id === 'material' && (configuration.selections.material || !(product.variations?.materials?.required || product.materials?.length > 0)) ||
-                              section.id === 'color' && (configuration.selections.color || !(product.variations?.colors?.required || product.colors?.length > 0)) ||
+                              section.id === 'material' && (configuration.selections.material || !(product.variations?.materials?.required || (product.materials && product.materials.length > 0))) ||
+                              section.id === 'color' && (configuration.selections.color || !(product.variations?.colors?.required || (product.colors && product.colors.length > 0))) ||
                               section.id === 'features' && (() => {
                                 // Features section is always completed since it's optional
                                 // Users can choose to select or not select features
@@ -378,7 +378,7 @@ export default function ProductConfigurator({
           )}
 
           {/* Material Selection */}
-          {activeSection === 'material' && (product.variations?.materials || product.materials?.length > 0) && (
+          {activeSection === 'material' && (product.variations?.materials || (product.materials && product.materials.length > 0)) && (
             <MaterialSelector
               options={product.variations?.materials || {
                 required: true,
@@ -397,17 +397,17 @@ export default function ProductConfigurator({
           )}
 
           {/* Color Selection */}
-          {activeSection === 'color' && (product.variations?.colors || product.colors?.length > 0) && (
+          {activeSection === 'color' && (product.variations?.colors || (product.colors && product.colors.length > 0)) && (
             <ColorSelector
               options={product.variations?.colors || {
                 required: true,
-                options: product.colors?.map((color: any) => ({
+                options: (product.colors || []).map((color: any) => ({
                   id: color.name?.toLowerCase().replace(/\s+/g, '-') || color.id,
                   name: color.name,
                   hex: color.hex || color.hexCode,
                   price: color.price || 0,
                   image: color.image
-                })) || []
+                }))
               }}
               selected={configuration.selections.color}
               onChange={(value) => updateSelection('color', value)}
