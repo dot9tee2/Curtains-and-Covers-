@@ -74,11 +74,17 @@ export default {
       description: 'Tags for filtering and search (e.g., bench, outdoor, custom)'
     },
     {
-      name: 'category',
-      title: 'Category',
-      type: 'reference',
-      to: [{ type: 'category' }],
-      validation: (Rule: any) => Rule.required()
+      name: 'categories',
+      title: 'Categories',
+      type: 'array',
+      of: [
+        {
+          type: 'reference',
+          to: [{ type: 'category' }]
+        }
+      ],
+      validation: (Rule: any) => Rule.required().min(1),
+      description: 'Select one or more categories for this product'
     },
 
     // Images
@@ -234,170 +240,19 @@ export default {
           ]
         },
 
-        // Materials
+        // Materials (now centralized)
         {
           name: 'materials',
-          title: 'Material Options',
-          type: 'object',
-          fields: [
+          title: 'Available Materials',
+          type: 'array',
+          of: [
             {
-              name: 'required',
-              title: 'Required Selection',
-              type: 'boolean',
-              initialValue: true
-            },
-            {
-              name: 'options',
-              title: 'Available Materials',
-              type: 'array',
-              of: [
-                {
-                  type: 'object',
-                  fields: [
-                    {
-                      name: 'id',
-                      title: 'Material ID',
-                      type: 'string',
-                      validation: (Rule: any) => Rule.required()
-                    },
-                    {
-                      name: 'name',
-                      title: 'Material Name',
-                      type: 'string',
-                      validation: (Rule: any) => Rule.required()
-                    },
-                    {
-                      name: 'price',
-                      title: 'Additional Price',
-                      type: 'number',
-                      validation: (Rule: any) => Rule.required().min(0)
-                    },
-                    {
-                      name: 'description',
-                      title: 'Description',
-                      type: 'text'
-                    },
-                    {
-                      name: 'image',
-                      title: 'Material Image',
-                      type: 'image'
-                    },
-                    {
-                      name: 'properties',
-                      title: 'Material Properties',
-                      type: 'object',
-                      fields: [
-                        {
-                          name: 'weight',
-                          title: 'Weight',
-                          type: 'string'
-                        },
-                        {
-                          name: 'warranty',
-                          title: 'Warranty',
-                          type: 'string'
-                        },
-                        {
-                          name: 'useCase',
-                          title: 'Use Case',
-                          type: 'string'
-                        },
-                        {
-                          name: 'waterproof',
-                          title: 'Waterproof',
-                          type: 'boolean'
-                        },
-                        {
-                          name: 'uvResistant',
-                          title: 'UV Resistant',
-                          type: 'string'
-                        }
-                      ]
-                    }
-                  ],
-                  preview: {
-                    select: {
-                      title: 'name',
-                      subtitle: 'price',
-                      media: 'image'
-                    },
-                    prepare(selection: any) {
-                      return {
-                        title: selection.title,
-                        subtitle: `+€${selection.subtitle}`,
-                        media: selection.media
-                      }
-                    }
-                  }
-                }
-              ]
+              type: 'reference',
+              to: [{ type: 'material' }]
             }
           ],
-          validation: (Rule: any) => Rule.required()
-        },
-
-        // Colors
-        {
-          name: 'colors',
-          title: 'Color Options',
-          type: 'object',
-          fields: [
-            {
-              name: 'required',
-              title: 'Required Selection',
-              type: 'boolean',
-              initialValue: true
-            },
-            {
-              name: 'options',
-              title: 'Available Colors',
-              type: 'array',
-              of: [
-                {
-                  type: 'object',
-                  fields: [
-                    {
-                      name: 'id',
-                      title: 'Color ID',
-                      type: 'string',
-                      validation: (Rule: any) => Rule.required()
-                    },
-                    {
-                      name: 'name',
-                      title: 'Color Name',
-                      type: 'string',
-                      validation: (Rule: any) => Rule.required()
-                    },
-                    {
-                      name: 'hex',
-                      title: 'Hex Code',
-                      type: 'string',
-                      validation: (Rule: any) => Rule.regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color code')
-                    },
-                    {
-                      name: 'price',
-                      title: 'Additional Price',
-                      type: 'number',
-                      initialValue: 0
-                    },
-                    {
-                      name: 'image',
-                      title: 'Color Swatch Image',
-                      type: 'image'
-                    }
-                  ],
-                  preview: {
-                    select: {
-                      title: 'name',
-                      subtitle: 'hex',
-                      media: 'image'
-                    }
-                  }
-                }
-              ]
-            }
-          ],
-          validation: (Rule: any) => Rule.required()
+          validation: (Rule: any) => Rule.required().min(1),
+          description: 'Select materials available for this product'
         },
 
         // Features
@@ -526,7 +381,19 @@ export default {
                   ]
                 }
               ],
-              validation: (Rule: any) => Rule.required()
+              validation: (Rule: any) => Rule.required(),
+              preview: {
+                select: {
+                  title: 'label',
+                  options: 'options'
+                },
+                prepare(selection: any) {
+                  return {
+                    title: selection.title || 'Cover Splits',
+                    subtitle: `${selection.options?.length || 0} options available`
+                  }
+                }
+              }
             },
             {
               name: 'branding',
@@ -580,7 +447,19 @@ export default {
                     }
                   ]
                 }
-              ]
+              ],
+              preview: {
+                select: {
+                  title: 'label',
+                  options: 'options'
+                },
+                prepare(selection: any) {
+                  return {
+                    title: selection.title || 'Custom Branding',
+                    subtitle: `${selection.options?.length || 0} options available`
+                  }
+                }
+              }
             }
           ]
         }
@@ -667,8 +546,7 @@ export default {
           }
         }
       ],
-      description: 'File upload requirements for custom work',
-      validation: (Rule: any) => Rule.required()
+      description: 'File upload requirements for custom work'
     },
 
     // Special Requests
@@ -745,16 +623,17 @@ export default {
     select: {
       title: 'title',
       media: 'image',
-      category: 'category.title',
       basePrice: 'basePrice',
-      currency: 'currency'
+      currency: 'currency',
+      categories: 'categories'
     },
     prepare(selection: any) {
-      const { title, media, category, basePrice, currency } = selection
+      const { title, media, basePrice, currency, categories } = selection
       const price = currency === 'EUR' ? `€${basePrice}` : `$${basePrice}`
+      const categoryText = categories && categories.length > 0 ? 'Categorized' : 'No category'
       return {
         title: title,
-        subtitle: `${category || 'No category'} • Complex Product • ${price}`,
+        subtitle: `${categoryText} • Complex Product • ${price}`,
         media: media
       }
     }

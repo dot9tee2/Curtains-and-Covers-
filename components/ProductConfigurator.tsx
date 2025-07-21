@@ -47,37 +47,21 @@ function calculateProductPrice(
         )
       }
       
-      // Fall back to legacy materials structure
-      if (!selectedMaterial && product.materials) {
-        selectedMaterial = product.materials.find(
-          m => (m.name?.toLowerCase().replace(/\s+/g, '-') || m.id) === configuration.selections.material
-        )
-      }
-      
-      if (selectedMaterial && selectedMaterial.price !== undefined) {
-        breakdown.materialPrice = selectedMaterial.price || 0
-        totalPrice += selectedMaterial.price || 0
+      // Handle material price - materials themselves don't have prices, but their colors do
+      if (selectedMaterial) {
+        // For legacy materials, we don't add material price as it's handled through color selection
+        breakdown.materialPrice = 0
       }
     }
 
     // Calculate color price (if any)
     if (configuration.selections.color) {
       let selectedColor = null
-      
-      // Check new variations structure first
       if (product.variations?.colors) {
         selectedColor = product.variations.colors.options.find(
           c => c.id === configuration.selections.color
         )
       }
-      
-      // Fall back to legacy colors structure
-      if (!selectedColor && product.colors) {
-        selectedColor = product.colors.find(
-          c => (c.name?.toLowerCase().replace(/\s+/g, '-') || c.id) === configuration.selections.color
-        )
-      }
-      
       if (selectedColor && selectedColor.price && selectedColor.price > 0) {
         breakdown.variationPrices!['color'] = selectedColor.price
         breakdown.addOnsTotal += selectedColor.price
@@ -155,6 +139,29 @@ function isCustomBrandingSelected(configuration: ProductConfiguration): boolean 
   return Boolean(brandingSelection) && brandingSelection !== '' && brandingSelection !== 'none'
 }
 
+// Get colors for the selected material
+function getColorsForSelectedMaterial(product: Product, configuration: ProductConfiguration) {
+  if (!configuration.selections.material || !product.materials) {
+    return []
+  }
+  
+  const selectedMaterial = product.materials.find(
+    material => material._id === configuration.selections.material
+  )
+  
+  if (!selectedMaterial || !selectedMaterial.colors) {
+    return []
+  }
+  
+  return selectedMaterial.colors.map((color: any) => ({
+    id: `${selectedMaterial._id}-${color.name?.toLowerCase().replace(/\s+/g, '-')}`,
+    name: color.name,
+    price: color.price || 0,
+    hex: color.hex,
+    image: color.image
+  }))
+}
+
 // Get configuration validation errors
 function getConfigurationErrors(
   product: Product,
@@ -170,13 +177,16 @@ function getConfigurationErrors(
     }
 
     // Check required materials
-    if ((product.variations?.materials?.required || (product.materials && product.materials.length > 0)) && !configuration.selections.material) {
+    if (product.variations?.materials?.options && product.variations.materials.options.length > 0 && !configuration.selections.material) {
       errors.push('Material selection is required')
     }
 
-    // Check required colors
-    if ((product.variations?.colors?.required || (product.colors && product.colors.length > 0)) && !configuration.selections.color) {
+    // Check required colors (only if material is selected and has colors)
+    if (configuration.selections.material) {
+      const availableColors = getColorsForSelectedMaterial(product, configuration)
+      if (availableColors.length > 0 && !configuration.selections.color) {
       errors.push('Color selection is required')
+      }
     }
 
     // Check required features
@@ -221,6 +231,8 @@ export default function ProductConfigurator({
   isAddingToCart = false,
   showSuccess = false
 }: ProductConfiguratorProps) {
+
+
   const [configuration, setConfiguration] = useState<ProductConfiguration>({
     productId: product.id,
     selections: {},
@@ -269,6 +281,19 @@ export default function ProductConfigurator({
     }
   }, [configuration.selections.branding])
 
+  // Clear color selection when material changes
+  useEffect(() => {
+    if (configuration.selections.color) {
+      setConfiguration(prev => ({
+        ...prev,
+        selections: {
+          ...prev.selections,
+          color: ''
+        }
+      }))
+    }
+  }, [configuration.selections.material])
+
   const updateSelection = (key: string, value: string) => {
     setConfiguration(prev => ({
       ...prev,
@@ -311,8 +336,8 @@ export default function ProductConfigurator({
 
   const sections = [
     { id: 'style', name: 'Style', required: product.variations?.styles?.required },
-    { id: 'material', name: 'Material', required: product.variations?.materials?.required || (product.materials && product.materials.length > 0) },
-    { id: 'color', name: 'Color', required: product.variations?.colors?.required || (product.colors && product.colors.length > 0) },
+    { id: 'material', name: 'Material', required: product.variations?.materials?.options && product.variations.materials.options.length > 0 },
+    { id: 'color', name: 'Color', required: configuration.selections.material && getColorsForSelectedMaterial(product, configuration).length > 0 },
     { id: 'features', name: 'Features', required: false },
     { id: 'measurements', name: 'Measurements', required: getStyleMeasurements(product, configuration).some(m => m.required) },
     ...(isCustomBrandingSelected(configuration) ? [{ id: 'uploads', name: 'Files', required: true }] : []),
@@ -327,8 +352,8 @@ export default function ProductConfigurator({
           {sections.map((section) => {
             const isActive = activeSection === section.id
             const isCompleted = section.id === 'style' && configuration.selections.style ||
-                              section.id === 'material' && (configuration.selections.material || !(product.variations?.materials?.required || (product.materials && product.materials.length > 0))) ||
-                              section.id === 'color' && (configuration.selections.color || !(product.variations?.colors?.required || (product.colors && product.colors.length > 0))) ||
+                              section.id === 'material' && (configuration.selections.material || !product.variations?.materials?.options || product.variations.materials.options.length === 0) ||
+                              section.id === 'color' && (configuration.selections.color || !configuration.selections.material || getColorsForSelectedMaterial(product, configuration).length === 0) ||
                               section.id === 'features' && (() => {
                                 // Features section is always completed since it's optional
                                 // Users can choose to select or not select features
@@ -378,40 +403,119 @@ export default function ProductConfigurator({
           )}
 
           {/* Material Selection */}
-          {activeSection === 'material' && (product.variations?.materials || (product.materials && product.materials.length > 0)) && (
-            <MaterialSelector
-              options={product.variations?.materials || {
-                required: true,
-                options: product.materials?.map((material: any) => ({
-                  id: material.name?.toLowerCase().replace(/\s+/g, '-') || material.id,
-                  name: material.name,
-                  price: material.price || 0,
-                  description: material.description,
-                  image: material.image,
-                  properties: material.properties
-                })) || []
-              }}
-              selected={configuration.selections.material}
-              onChange={(value) => updateSelection('material', value)}
-            />
+          {activeSection === 'material' && (
+            <>
+              {product.variations?.materials?.options && product.variations.materials.options.length > 0 ? (
+                <MaterialSelector
+                  options={product.variations.materials}
+                  selected={configuration.selections.material}
+                  onChange={(value) => updateSelection('material', value)}
+                />
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Materials</h3>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-6 text-center">
+                    <svg
+                      className="w-12 h-12 text-blue-400 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <h4 className="text-lg font-medium text-blue-900 mb-2">No Materials Available</h4>
+                    <p className="text-blue-800 mb-4">
+                      This product doesn't have any material options configured yet.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Color Selection */}
-          {activeSection === 'color' && (product.variations?.colors || (product.colors && product.colors.length > 0)) && (
+          {activeSection === 'color' && (
+            <>
+              {!configuration.selections.material ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Colors</h3>
+                  </div>
+                  
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-6 text-center">
+                    <svg
+                      className="w-12 h-12 text-yellow-400 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                    <h4 className="text-lg font-medium text-yellow-900 mb-2">Material Selection Required</h4>
+                    <p className="text-yellow-800 mb-4">
+                      Please select a material first to see available colors for that material.
+                    </p>
+                    <button
+                      onClick={() => setActiveSection('material')}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-800 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                    >
+                      Choose Material
+                    </button>
+                  </div>
+                </div>
+              ) : (() => {
+                const availableColors = getColorsForSelectedMaterial(product, configuration)
+                return availableColors.length > 0 ? (
             <ColorSelector
-              options={product.variations?.colors || {
+                    options={{
                 required: true,
-                options: (product.colors || []).map((color: any) => ({
-                  id: color.name?.toLowerCase().replace(/\s+/g, '-') || color.id,
-                  name: color.name,
-                  hex: color.hex || color.hexCode,
-                  price: color.price || 0,
-                  image: color.image
-                }))
+                      options: availableColors
               }}
               selected={configuration.selections.color}
               onChange={(value) => updateSelection('color', value)}
             />
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900">Colors</h3>
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-6 text-center">
+                      <svg
+                        className="w-12 h-12 text-blue-400 mx-auto mb-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <h4 className="text-lg font-medium text-blue-900 mb-2">No Colors Available</h4>
+                      <p className="text-blue-800 mb-4">
+                        The selected material doesn't have any color options configured.
+                      </p>
+                    </div>
+                  </div>
+                )
+              })()}
+            </>
           )}
 
           {/* Feature Selections */}
@@ -598,7 +702,7 @@ export default function ProductConfigurator({
                   Adding to Cart...
                 </div>
               ) : (
-                pricing.isValid ? 'Add to Cart' : 'Complete Configuration'
+                'Add to Cart'
               )}
             </button>
 
@@ -619,14 +723,7 @@ export default function ProductConfigurator({
               </div>
             )}
 
-            {/* Continue to Next Section */}
-            {pricing.isValid && !showSuccess && (
-              <div className="mt-4 text-center">
-                <p className="text-sm text-green-600 font-medium">
-                  ✓ Configuration Complete
-                </p>
-              </div>
-            )}
+
           </div>
         </div>
       </div>

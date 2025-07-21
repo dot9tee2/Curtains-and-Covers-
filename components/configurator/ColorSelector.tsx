@@ -24,7 +24,6 @@ export default function ColorSelector({ options, selected, onChange }: ColorSele
         </div>
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-6 text-center">
           <p className="text-yellow-800">No colors available for this product.</p>
-          <p className="text-sm text-yellow-600 mt-2">Debug info: {JSON.stringify(options)}</p>
         </div>
       </div>
     )

@@ -23,22 +23,24 @@ export default function PriceDisplay({ pricing, currency = 'EUR' }: PriceDisplay
       <h3 className="text-lg font-semibold text-gray-900">Price Summary</h3>
       
       <div className="space-y-3">
-        {/* Base Price */}
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Base Price:</span>
-          <span className="font-medium">{formatPrice(breakdown.basePrice)}</span>
-        </div>
+        {/* Base Price - only show if greater than 0 */}
+        {breakdown.basePrice > 0 ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Base Price:</span>
+            <span className="font-medium">{formatPrice(breakdown.basePrice)}</span>
+          </div>
+        ) : null}
 
         {/* Material Price */}
-        {breakdown.materialPrice && breakdown.materialPrice > 0 && (
+        {breakdown.materialPrice && breakdown.materialPrice > 0 ? (
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Material:</span>
             <span className="font-medium">+{formatPrice(breakdown.materialPrice)}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Variation Prices */}
-        {breakdown.variationPrices && Object.keys(breakdown.variationPrices).length > 0 && (
+        {breakdown.variationPrices && Object.keys(breakdown.variationPrices).length > 0 ? (
           <>
             {Object.entries(breakdown.variationPrices).map(([key, price]) => {
               if (price <= 0) return null
@@ -56,15 +58,15 @@ export default function PriceDisplay({ pricing, currency = 'EUR' }: PriceDisplay
               )
             })}
           </>
-        )}
+        ) : null}
 
         {/* Add-ons Total */}
-        {breakdown.addOnsTotal > 0 && (
+        {breakdown.addOnsTotal > 0 ? (
           <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
             <span className="text-gray-600">Add-ons Total:</span>
             <span className="font-medium">+{formatPrice(breakdown.addOnsTotal)}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Subtotal */}
         <div className="flex justify-between text-base font-medium border-t border-gray-200 pt-3">
@@ -73,12 +75,12 @@ export default function PriceDisplay({ pricing, currency = 'EUR' }: PriceDisplay
         </div>
 
         {/* Tax */}
-        {breakdown.tax > 0 && (
+        {breakdown.tax > 0 ? (
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Tax:</span>
             <span className="font-medium">{formatPrice(breakdown.tax)}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Total */}
         <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-3">
@@ -87,24 +89,7 @@ export default function PriceDisplay({ pricing, currency = 'EUR' }: PriceDisplay
         </div>
       </div>
 
-      {/* Configuration Status */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        {pricing.isValid ? (
-          <div className="flex items-center text-green-600">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm font-medium">Configuration Complete</span>
-          </div>
-        ) : (
-          <div className="flex items-center text-orange-600">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <span className="text-sm font-medium">Configuration Incomplete</span>
-          </div>
-        )}
-      </div>
+
 
       {/* Savings or Special Offers */}
       {breakdown.materialPrice && breakdown.materialPrice > 150 && (

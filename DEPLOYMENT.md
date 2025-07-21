@@ -7,7 +7,6 @@ This guide will walk you through deploying your Curtains and Covers eCommerce ap
 ### ✅ Required Accounts
 - [ ] [GitHub](https://github.com) account with your repository
 - [ ] [Vercel](https://vercel.com) account (free tier available)
-- [ ] [MongoDB Atlas](https://cloud.mongodb.com) account (free tier available)
 - [ ] [Sanity.io](https://sanity.io) account (already configured)
 
 ### ✅ Required Environment Variables
@@ -17,45 +16,26 @@ Copy from `env.example` and configure:
 ```bash
 NEXT_PUBLIC_SANITY_PROJECT_ID=idc6hzzx
 NEXT_PUBLIC_SANITY_DATASET=production
-MONGODB_URI=mongodb+srv://...
 NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
 ```
 
 **Optional Variables:**
 ```bash
-STRIPE_SECRET_KEY=sk_live_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 WHATSAPP_PHONE_NUMBER=1234567890
 ```
 
-## 🗄️ Database Setup (MongoDB Atlas)
+## 🎨 Sanity CMS Setup
 
-### Step 1: Create MongoDB Atlas Cluster
-1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
-2. Create a new project: `curtains-and-covers`
-3. Build a database cluster (free M0 tier)
-4. Choose provider: AWS, region: us-east-1
-5. Cluster name: `curtains-covers-prod`
+### Step 1: Access Sanity Studio
+1. Go to your deployed Sanity Studio
+2. Login with your Sanity account
+3. Start adding products and content
 
-### Step 2: Database Security
-1. **Database Access**: Create database user
-   - Username: `curtains-app`
-   - Password: Generate secure password
-   - Role: `Atlas admin` or `Read and write to any database`
-
-2. **Network Access**: Whitelist IP addresses
-   - Add IP: `0.0.0.0/0` (Allow access from anywhere)
-   - Or add Vercel's IP ranges for security
-
-### Step 3: Get Connection String
-1. Click "Connect" → "Connect your application"
-2. Driver: Node.js, Version: 4.1 or later
-3. Copy connection string:
-   ```
-   mongodb+srv://curtains-app:<password>@curtains-covers-prod.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   ```
-4. Replace `<password>` with your database user password
-5. Add database name: `curtains-and-covers`
+### Step 2: Configure Content
+1. **Add Products**: Create products with materials and variations
+2. **Set Categories**: Organize products by category
+3. **Configure Pricing**: Set up material costs and features
+4. **Add Blog Posts**: Create content for your blog section
 
 ## 🎨 Sanity CMS Deployment
 

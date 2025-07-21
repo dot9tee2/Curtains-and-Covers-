@@ -18,7 +18,6 @@ export default function ProductConfiguratorWrapper({ product }: ProductConfigura
 
   const handleConfigurationChange = (config: ProductConfiguration, pricing: PriceCalculationResult) => {
     // Handle configuration changes if needed
-    console.log('Configuration updated:', config, pricing)
   }
 
   const handleAddToCart = async (config: ProductConfiguration, pricing: PriceCalculationResult) => {
@@ -69,8 +68,7 @@ export default function ProductConfiguratorWrapper({ product }: ProductConfigura
       
       // Get material name from selections
       if (config.selections.material) {
-        const materialOption = product.variations?.materials?.options?.find(m => m.id === config.selections.material) ||
-                              product.materials?.find(m => (m.name?.toLowerCase().replace(/\s+/g, '-') || m.id) === config.selections.material)
+        const materialOption = product.variations?.materials?.options?.find(m => m.id === config.selections.material)
         if (materialOption) {
           materialName = materialOption.name
         }
@@ -78,8 +76,7 @@ export default function ProductConfiguratorWrapper({ product }: ProductConfigura
       
       // Get color name from selections
       if (config.selections.color) {
-        const colorOption = product.variations?.colors?.options?.find(c => c.id === config.selections.color) ||
-                           product.colors?.find(c => (c.name?.toLowerCase().replace(/\s+/g, '-') || c.id) === config.selections.color)
+        const colorOption = product.variations?.colors?.options?.find(c => c.id === config.selections.color)
         if (colorOption) {
           colorName = colorOption.name
         }

@@ -65,10 +65,10 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="flex flex-wrap gap-1">
               {product.materials.slice(0, 3).map((material, index) => (
                 <span
-                  key={material.name}
+                  key={material.title}
                   className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
                 >
-                  {material.name}
+                  {material.title}
                 </span>
               ))}
               {product.materials.length > 3 && (
@@ -87,7 +87,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             <div className="flex gap-1">
               {product.colors.slice(0, 6).map((color) => (
                 <div
-                  key={color.value}
+                  key={color.name}
                   className="w-4 h-4 rounded-full border border-gray-200 ring-1 ring-white"
                   style={{ backgroundColor: color.hex }}
                   title={color.name}

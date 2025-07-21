@@ -17,7 +17,7 @@ export function urlForImage(source: any) {
   return builder.image(source)
 }
 
-// Enhanced product query with all complex fields
+// Enhanced product query with proper material references
 const enhancedProductQuery = `
   _id,
   title,
@@ -33,9 +33,6 @@ const enhancedProductQuery = `
   inStock,
   image,
   gallery,
-  materials,
-  colors,
-  addons,
   variations {
     styles {
       required,
@@ -54,32 +51,23 @@ const enhancedProductQuery = `
         }
       }
     },
-    materials {
-      required,
-      options[] {
-        id,
-        name,
-        price,
-        description,
-        image,
-        properties {
-          weight,
-          warranty,
-          useCase,
-          waterproof,
-          uvResistant
-        }
-      }
-    },
-    colors {
-      required,
-      options[] {
-        id,
+    materials[]-> {
+      _id,
+      title,
+      slug,
+      description,
+      multiplier,
+      image,
+      properties,
+      colors[] {
         name,
         hex,
+        image,
         price,
-        image
-      }
+        inStock
+      },
+      featured,
+      active
     },
     features {
       tieDowns {
@@ -114,7 +102,6 @@ const enhancedProductQuery = `
       }
     }
   },
-
   measurementTips,
   fileUploads[] {
     id,
@@ -128,7 +115,7 @@ const enhancedProductQuery = `
     enabled,
     placeholder
   },
-  category->{
+  categories[]-> {
     _id,
     title,
     slug,
@@ -155,7 +142,10 @@ export const queries = {
 
   // Get single product by slug
   productBySlug: `*[_type == "product" && slug.current == $slug][0] {
-    ${enhancedProductQuery}
+    ${enhancedProductQuery},
+    rating,
+    reviewCount,
+    metaDescription
   }`,
 
   // Get products by type
@@ -184,7 +174,7 @@ export const queries = {
   }`,
 
   // Get products by category
-  productsByCategory: `*[_type == "product" && category->slug.current == $category] | order(_createdAt desc) {
+  productsByCategory: `*[_type == "product" && $category in categories[]->slug.current] | order(_createdAt desc) {
     ${enhancedProductQuery}
   }`,
 
@@ -210,7 +200,7 @@ export const queries = {
     description,
     image,
     featured,
-    "productCount": count(*[_type == "product" && references(^._id)])
+    "productCount": count(*[_type == "product" && ^._id in categories[]._ref])
   }`,
 
   // Get featured blog posts
@@ -253,7 +243,23 @@ export async function getFeaturedProducts() {
 }
 
 export async function getProductBySlug(slug: string) {
-  return await client.fetch(queries.productBySlug, { slug })
+  try {
+    
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Sanity query timeout')), 10000)
+    })
+    
+    const queryPromise = client.fetch(queries.productBySlug, { slug })
+    
+    const product = await Promise.race([queryPromise, timeoutPromise])
+    
+    return product
+  } catch (error) {
+    console.error('Error fetching product by slug:', slug, error)
+    return null
+  }
 }
 
 export async function getProductsByType(productType: 'simple' | 'complex') {
@@ -273,7 +279,13 @@ export async function getCategoriesWithProductCount() {
 }
 
 export async function getProductsByCategory(category: string) {
-  return await client.fetch(queries.productsByCategory, { category })
+  try {
+    const products = await client.fetch(queries.productsByCategory, { category })
+    return products
+  } catch (error) {
+    console.error('Error fetching products by category:', category, error)
+    return []
+  }
 }
 
 export async function getBlogPosts() {

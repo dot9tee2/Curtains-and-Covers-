@@ -4,7 +4,7 @@ export interface Product {
   slug: string
   description: string | string[]
   image: string
-  category: string
+  categories: Category[]
   basePrice: number
   rating?: number
   reviewCount?: number
@@ -22,6 +22,10 @@ export interface Product {
   measurementTips?: string[]
   // Product type for complex vs simple products
   productType?: 'simple' | 'complex'
+  // Additional fields
+  shortDescription?: string
+  addons?: any[]
+  metaDescription?: string
   // Legacy support for backward compatibility
   materials?: Material[]
   colors?: Color[]
@@ -29,16 +33,35 @@ export interface Product {
 
 // Enhanced Material interface
 export interface Material {
-  id?: string
-  name: string
-  multiplier?: number
-  price?: number
-  description: string
+  _id: string
+  title: string
+  slug: {
+    current: string
+  }
+  description?: string
+  multiplier: number
   image?: string
-  properties?: MaterialProperties
   weight?: string
+  waterproof?: boolean
+  waterResistant?: boolean
+  uvResistant?: boolean
+  tearResistant?: boolean
+  abrasionResistant?: boolean
+  pvcCoated?: boolean
+  wipeClean?: boolean
   warranty?: string
   useCase?: string
+  colors: MaterialColor[]
+  featured?: boolean
+  active?: boolean
+}
+
+export interface MaterialColor {
+  name: string
+  hex: string
+  image?: string
+  price: number
+  inStock: boolean
 }
 
 export interface MaterialProperties {
@@ -54,14 +77,13 @@ export interface MaterialProperties {
   useCase?: string
 }
 
-// Enhanced Color interface
+// Enhanced Color interface (now part of MaterialColor)
 export interface Color {
-  id?: string
   name: string
-  value?: string
   hex: string
   image?: string
-  price?: number
+  price: number
+  inStock: boolean
 }
 
 // Product variation interfaces
@@ -157,18 +179,15 @@ export interface PriceBreakdown {
 
 // Category Types
 export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  image: string;
-  bannerImage?: string;
-  seoText?: string;
-  featured: boolean;
-  parentId?: string;
-  parent?: string | null;
-  children?: Category[];
-  productCount: number;
+  _id: string;
+  title: string;
+  slug: {
+    current: string;
+  };
+  description?: string;
+  image?: string;
+  featured?: boolean;
+  productCount?: number;
 }
 
 // Filter Types

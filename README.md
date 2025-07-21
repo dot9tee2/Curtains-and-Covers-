@@ -10,17 +10,17 @@ A modern, full-stack eCommerce website for custom curtains and covers built with
 - **SEO Optimized**: Complete meta tags, structured data, and OpenGraph support
 - **Blog System**: MDX-powered blog with categories and tags
 - **Shopping Cart**: Persistent cart with local storage
-- **Multiple Order Methods**: Stripe checkout and WhatsApp ordering
+- **Multiple Order Methods**: WhatsApp ordering and contact forms
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 
 ### Technical Features
 - **Next.js 14**: App Router with TypeScript
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: Sanity CMS with real-time data
 - **Styling**: TailwindCSS with custom design system
 - **Animations**: Framer Motion for smooth transitions
 - **Icons**: Lucide React icon library
 - **Forms**: React Hook Form with Zod validation
-- **Payment**: Stripe integration ready
+- **Payment**: WhatsApp ordering and contact forms
 - **SEO**: Comprehensive metadata and structured data
 
 ## 🎨 Design System
@@ -63,11 +63,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SITE_NAME="Curtains and Covers"
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/curtains-and-covers
-
-# Stripe (Optional)
-STRIPE_SECRET_KEY=sk_test_your_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+# WhatsApp (Optional)
+WHATSAPP_PHONE_NUMBER=1234567890
 
 # WhatsApp
 WHATSAPP_PHONE_NUMBER=1234567890
@@ -192,13 +189,13 @@ Content goes here...
 - **Persistent Storage**: Uses localStorage for cart persistence
 - **Real-time Updates**: Automatic price recalculation
 - **Validation**: Ensures all required customizations are complete
-- **Multiple Checkout Options**: Stripe and WhatsApp ordering
+- **Multiple Order Options**: WhatsApp ordering and contact forms
 
 ### Order Flow
 1. Product customization
 2. Add to cart with validation
 3. Cart review and updates
-4. Checkout (Stripe) or WhatsApp order
+4. WhatsApp order or contact form submission
 5. Order confirmation and tracking
 
 ## 🎯 SEO & Performance
@@ -281,7 +278,7 @@ See `.env.example` for all required environment variables.
 
 ### Key Configurations
 - **Database**: MongoDB connection string
-- **Payments**: Stripe API keys
+- **Communication**: WhatsApp phone number
 - **WhatsApp**: Phone number for orders
 - **Analytics**: Google Analytics ID
 
@@ -327,14 +324,11 @@ See `.env.example` for all required environment variables.
    ```
    NEXT_PUBLIC_SANITY_PROJECT_ID=idc6hzzx
    NEXT_PUBLIC_SANITY_DATASET=production
-   MONGODB_URI=your_mongodb_atlas_connection_string
    NEXT_PUBLIC_SITE_URL=https://your-project.vercel.app
    ```
 
    **Optional Variables:**
    ```
-   STRIPE_SECRET_KEY=sk_live_...
-   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
    WHATSAPP_PHONE_NUMBER=1234567890
    ```
 
@@ -351,22 +345,17 @@ See `.env.example` for all required environment variables.
    vercel
    ```
 
-### Database Setup (MongoDB Atlas)
+### Sanity CMS Setup
 
-1. **Create MongoDB Atlas Account**
-   - Go to [mongodb.com/atlas](https://www.mongodb.com/atlas)
-   - Create a free cluster
+1. **Access Sanity Studio**
+   - Go to your deployed Sanity Studio
+   - Login with your Sanity account
+   - Start adding products and content
 
-2. **Get Connection String**
-   - In Atlas dashboard, click "Connect"
-   - Choose "Connect your application"
-   - Copy the connection string
-   - Replace `<password>` and `<dbname>`
-
-3. **Add to Vercel Environment Variables**
-   ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/curtains-and-covers?retryWrites=true&w=majority
-   ```
+2. **Configure Content**
+   - Add products with materials and variations
+   - Set up categories and blog posts
+   - Configure pricing and measurements
 
 ### Sanity CMS Deployment
 
@@ -388,7 +377,6 @@ See `.env.example` for all required environment variables.
 
 ### Production Checklist
 - [ ] ✅ Environment variables configured in Vercel
-- [ ] ✅ MongoDB Atlas database connected
 - [ ] ✅ Sanity Studio deployed and accessible
 - [ ] 🔄 SSL certificate auto-configured by Vercel
 - [ ] 🔄 Test all functionality on live site

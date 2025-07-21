@@ -497,7 +497,7 @@ export default function HomePageClient({
                       {/* Category Tag */}
                       <div className="mb-3">
                         <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                          {product.category?.title || 'Product'}
+                          {product.categories?.[0]?.title || 'Product'}
                         </span>
                       </div>
 
