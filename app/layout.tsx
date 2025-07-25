@@ -6,6 +6,8 @@ import Footer from '@/components/layout/Footer';
 import DynamicNavbarWrapper from '@/components/layout/DynamicNavbarWrapper';
 import { generateMetadata } from '@/components/seo/MetaTags';
 import { CartProvider } from '@/contexts/CartContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -32,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body className="font-sans antialiased">
         <CartProvider>
+          <AuthProvider>
           <div className="min-h-screen flex flex-col">
             <Header />
             <DynamicNavbarWrapper />
@@ -40,6 +43,7 @@ export default function RootLayout({
             </main>
             <Footer />
           </div>
+          </AuthProvider>
         </CartProvider>
       </body>
     </html>

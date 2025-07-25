@@ -1,30 +1,15 @@
-import { Product, Category } from '@/types/product'
-import { getProducts, getFeaturedProducts as getSanityFeaturedProducts, getProductBySlug as getSanityProductBySlug, getProductsByCategory as getSanityProductsByCategory, getCategories, urlForImage } from './sanity'
+import { client } from './sanity'
+import { urlForImage } from './sanity'
+import { Product, Material, Category } from '@/types/product'
 
-// Transform Sanity product data to match frontend interface
+// Transform Sanity product data to our Product interface
 async function transformProduct(sanityProduct: any): Promise<Product> {
-  try {
-    console.log('transformProduct called with:', sanityProduct.title)
-    
-    // Validate required fields
-    if (!sanityProduct._id) {
-      throw new Error('Product missing _id')
-    }
-    if (!sanityProduct.title) {
-      throw new Error('Product missing title')
-    }
-    if (!sanityProduct.slug || !sanityProduct.slug.current) {
-      throw new Error(`Product missing valid slug: ${JSON.stringify(sanityProduct.slug)}`)
-    }
-
-    console.log('Product validation passed')
-
-    // Extract materials from variations.materials (array of material references)
-    let materials: any[] = []
+  console.log('Transforming product:', sanityProduct.name)
+  
+  let materials: Material[] = []
     let colors: any[] = []
     
-    console.log('Processing variations:', sanityProduct.variations)
-    
+  // Transform materials with enhanced schema support
     if (sanityProduct.variations?.materials && Array.isArray(sanityProduct.variations.materials)) {
       console.log('Found materials array with', sanityProduct.variations.materials.length, 'items')
       
@@ -36,154 +21,175 @@ async function transformProduct(sanityProduct: any): Promise<Product> {
           title: material.title,
           slug: material.slug,
           description: material.description,
+        detailedDescription: material.detailedDescription,
           multiplier: material.multiplier || 1.0,
           image: material.image ? urlForImage(material.image).url() : undefined,
-          weight: material.properties?.weight,
-          waterproof: material.properties?.waterproof,
-          waterResistant: material.properties?.waterResistant,
-          uvResistant: material.properties?.uvResistant,
-          tearResistant: material.properties?.tearResistant,
-          abrasionResistant: material.properties?.abrasionResistant,
-          pvcCoated: material.properties?.pvcCoated,
-          wipeClean: material.properties?.wipeClean,
-          warranty: material.properties?.warranty,
-          useCase: material.properties?.useCase,
-          colors: material.colors?.filter((color: any) => color && color.name)?.map((color: any) => ({
+        gallery: material.gallery?.map((img: any) => urlForImage(img).url()) || [],
+        category: material.category,
+        tags: material.tags || [],
+        technicalSpecs: material.technicalSpecs ? {
+          composition: material.technicalSpecs.composition,
+          weight: material.technicalSpecs.weight,
+          thickness: material.technicalSpecs.thickness,
+          width: material.technicalSpecs.width || [],
+          finish: material.technicalSpecs.finish,
+          breathability: material.technicalSpecs.breathability
+        } : undefined,
+        properties: material.properties ? {
+          weightCategory: material.properties.weightCategory,
+          waterproofRating: material.properties.waterproofRating,
+          uvResistanceRating: material.properties.uvResistanceRating,
+          tearStrength: material.properties.tearStrength,
+          abrasionResistance: material.properties.abrasionResistance,
+          temperatureResistance: material.properties.temperatureResistance,
+          fireRetardant: material.properties.fireRetardant,
+          antimicrobial: material.properties.antimicrobial,
+          antiStatic: material.properties.antiStatic,
+          pvcCoated: material.properties.pvcCoated,
+          wipeClean: material.properties.wipeClean,
+          warranty: material.properties.warranty,
+          certifications: material.properties.certifications || []
+        } : undefined,
+        careInstructions: material.careInstructions,
+        sustainability: material.sustainability,
+        applications: material.applications,
+        supplier: material.supplier,
+        hasColors: material.hasColors !== false, // Default to true for backward compatibility
+        colors: material.hasColors !== false && material.colors?.filter((color: any) => color && color.name)?.map((color: any) => ({
             name: color.name,
+          colorCode: color.colorCode,
             hex: color.hex,
             image: color.image ? urlForImage(color.image).url() : undefined,
             price: color.price || 0,
-            inStock: color.inStock !== false
+          popularity: color.popularity,
+          fastness: color.fastness,
+          inStock: color.inStock !== false,
+          seasonal: color.seasonal || false
           })) || [],
-          featured: material.featured || false,
-          active: material.active !== false
+        seo: material.seo,
+        active: material.active !== false,
+        displayOrder: material.displayOrder
         }
       })
       
-      // Flatten all colors from all materials
-      colors = materials.flatMap((material: any) => material.colors)
+    // Flatten all colors from all materials for legacy support
+    colors = materials.flatMap((material: Material) => material.colors)
       console.log('Extracted', materials.length, 'materials and', colors.length, 'colors')
     } else {
       console.log('No materials found in variations')
     }
 
-    console.log('Starting variations transformation...')
-    const variations = await transformVariations(sanityProduct.variations, materials)
-    console.log('Variations transformation completed')
-
-    const transformed = {
+  // Transform the product with enhanced data
+  const product: Product = {
       id: sanityProduct._id,
-      name: sanityProduct.title,
-      slug: sanityProduct.slug.current,
+    name: sanityProduct.name,
+    slug: sanityProduct.slug?.current || '',
       description: sanityProduct.description || '',
-      shortDescription: sanityProduct.shortDescription || '',
-      image: sanityProduct.image ? urlForImage(sanityProduct.image).url() : '/images/placeholder.jpg',
+    image: sanityProduct.image ? urlForImage(sanityProduct.image).url() : '',
       categories: sanityProduct.categories?.map((cat: any) => ({
         _id: cat._id,
         title: cat.title,
         slug: cat.slug,
-        description: cat.description,
+      description: cat.description || '',
         image: cat.image ? urlForImage(cat.image).url() : undefined,
         featured: cat.featured || false
       })) || [],
       basePrice: sanityProduct.basePrice || 0,
-      rating: sanityProduct.rating || 4.5,
-      reviewCount: sanityProduct.reviewCount || Math.floor(Math.random() * 200) + 50,
+    rating: sanityProduct.rating,
+    reviewCount: sanityProduct.reviewCount,
       featured: sanityProduct.featured || false,
       inStock: sanityProduct.inStock !== false,
       sku: sanityProduct.sku,
       tags: sanityProduct.tags || [],
-      currency: sanityProduct.currency || 'EUR',
-      productType: sanityProduct.productType || 'complex',
-      images: {
-        main: sanityProduct.image ? urlForImage(sanityProduct.image).url() : '/images/placeholder.jpg',
-        gallery: sanityProduct.gallery?.map((img: any) => urlForImage(img).url()) || []
-      },
-      variations,
+    images: sanityProduct.images ? {
+      main: urlForImage(sanityProduct.images.main).url(),
+      gallery: sanityProduct.images.gallery?.map((img: any) => urlForImage(img).url()) || []
+    } : undefined,
+    currency: sanityProduct.currency || 'USD',
+    variations: await transformVariations(sanityProduct.variations, materials),
+    measurements: sanityProduct.measurements || [],
       fileUploads: sanityProduct.fileUploads || [],
-      specialRequests: sanityProduct.specialRequests || { enabled: true, placeholder: 'Enter any special requests or additional requirements' },
-      measurementTips: sanityProduct.measurementTips || [
-        'Measure the longest and widest points of your item',
-        'Use a flexible tape measure for accurate measurements',
-        'Take measurements in centimeters for best results',
-        'Include any special features or protrusions in your measurements'
-      ],
+    specialRequests: sanityProduct.specialRequests,
+    measurementTips: sanityProduct.measurementTips,
+    productType: sanityProduct.productType || 'simple',
+    shortDescription: sanityProduct.shortDescription,
+    addons: sanityProduct.addons || [],
+    metaDescription: sanityProduct.metaDescription,
+    defaultConfiguration: sanityProduct.defaultConfiguration,
+    // Enhanced legacy support
       materials,
-      colors,
-      addons: sanityProduct.addons || [],
-      metaDescription: sanityProduct.metaDescription || ''
-    }
-    
-    console.log('Product transformation completed successfully')
-    return transformed
-  } catch (error) {
-    console.error('Error in transformProduct for:', sanityProduct?.title || 'unknown', error)
-    throw error
+    colors
   }
+
+  console.log('Transformed product:', product.name, 'with', materials.length, 'materials')
+  return product
 }
 
-// Transform variations to match frontend expectations
-async function transformVariations(variations: any, materials: any[] = []) {
-  try {
-    if (!variations) {
-      return {
-        materials: { required: true, options: [] },
-        colors: { required: true, options: [] }
-      }
-    }
-    
-    console.log('TransformVariations input:', JSON.stringify(variations, null, 2))
-    
+// Transform variations with enhanced material data
+async function transformVariations(variations: any, materials: Material[] = []) {
+  console.log('Transforming variations with', materials.length, 'materials')
     const result: any = {}
     
     // Styles
-    if (variations.styles && variations.styles.options) {
+  if (variations?.styles && Array.isArray(variations.styles)) {
       result.styles = {
-        required: variations.styles.required || false,
-        options: variations.styles.options.map((style: any) => ({
-          id: style.id,
+      required: variations.styles.some((style: any) => style.required) || false,
+      options: variations.styles.map((style: any) => ({
+        id: style._id,
           name: style.name,
-          price: 0,
-          description: style.description,
+        price: style.price || 0,
+        description: style.description || '',
           image: style.image ? urlForImage(style.image).url() : undefined,
           measurements: style.measurements || []
         }))
       }
     }
     
-    // Materials - use the processed materials array
+  // Enhanced Materials - use the processed materials array
     if (materials && materials.length > 0) {
       console.log('Processing materials for variations:', materials.length, 'items')
       
       result.materials = {
         required: true,
-        options: materials.map((material: any) => {
+      options: materials.map((material: Material) => {
           console.log('Processing material for variations:', material.title)
           
           return {
             id: material._id,
             name: material.title,
-            price: 0,
+          price: 0, // Base material price is handled by multiplier
             description: material.description || '',
             image: material.image,
             properties: {
-              weight: material.weight,
-              waterproof: material.waterproof,
-              waterResistant: material.waterResistant,
-              uvResistant: material.uvResistant,
-              tearResistant: material.tearResistant,
-              abrasionResistant: material.abrasionResistant,
-              pvcCoated: material.pvcCoated,
-              wipeClean: material.wipeClean,
-              warranty: material.warranty,
-              useCase: material.useCase
-            }
+            // Legacy properties for backward compatibility
+            weight: material.properties?.weightCategory,
+            waterproof: material.properties?.waterproofRating && material.properties.waterproofRating >= 4,
+            waterResistant: material.properties?.waterproofRating && material.properties.waterproofRating >= 2,
+            uvResistant: material.properties?.uvResistanceRating && material.properties.uvResistanceRating >= 3,
+            tearResistant: material.properties?.tearStrength && material.properties.tearStrength >= 3,
+            abrasionResistant: material.properties?.abrasionResistance && material.properties.abrasionResistance >= 3,
+            pvcCoated: material.properties?.pvcCoated,
+            wipeClean: material.properties?.wipeClean,
+            warranty: material.properties?.warranty,
+            useCase: material.applications?.recommended?.[0] || 'General use',
+            // Enhanced properties
+            category: material.category,
+            technicalSpecs: material.technicalSpecs,
+            enhancedProperties: material.properties,
+            careInstructions: material.careInstructions,
+            sustainability: material.sustainability,
+            applications: material.applications,
+            supplier: material.supplier,
+            seo: material.seo,
+            performanceScore: calculateMaterialPerformanceScore(material),
+            suitabilityTags: generateMaterialSuitabilityTags(material)
           }
-        })
-      }
-      
-      // Colors (flattened from materials)
-      const colorOptions = materials.flatMap((material: any) => {
+        }
+      })
+    }
+    
+    // Enhanced Colors (flattened from materials with enhanced data)
+    const colorOptions = materials.flatMap((material: Material) => {
         if (!material.colors || !Array.isArray(material.colors)) {
           return []
         }
@@ -193,168 +199,413 @@ async function transformVariations(variations: any, materials: any[] = []) {
           name: color.name || 'Unknown Color',
           price: color.price || 0,
           hex: color.hex || '#000000',
-          image: color.image
+        image: color.image,
+        colorCode: color.colorCode,
+        popularity: color.popularity,
+        fastness: color.fastness,
+        inStock: color.inStock !== false,
+        seasonal: color.seasonal || false,
+        materialId: material._id,
+        materialName: material.title
         }))
       })
       
       result.colors = {
         required: true,
-        options: colorOptions
+      options: colorOptions.sort((a: any, b: any) => {
+        // Sort by availability first, then popularity
+        if (a.inStock !== b.inStock) return b.inStock ? 1 : -1
+        return (b.popularity || 3) - (a.popularity || 3)
+      })
       }
       
       console.log('Transformed materials options:', result.materials.options.length)
       console.log('Transformed colors options:', result.colors.options.length)
-    } else {
-      console.log('No materials found, creating empty options')
-      result.materials = { required: false, options: [] }
-      result.colors = { required: false, options: [] }
-    }
-    
-    // Features
-    if (variations.features) {
-      result.features = Object.keys(variations.features).reduce((acc: any, key: string) => {
-        const feature = variations.features[key]
-        if (feature && feature.options) {
-          acc[key] = {
-            required: feature.required || false,
-            label: feature.label || key,
-            options: feature.options.map((option: any) => ({
-              id: option.id,
-              name: option.name,
-              price: option.price || 0,
-              description: option.description
-            }))
-          }
-        }
-        return acc
-      }, {})
-    }
-    
-    console.log('Final transformed variations result:', JSON.stringify(result, null, 2))
-    return result
-  } catch (error) {
-    console.error('Error in transformVariations:', error)
-    return {
-      materials: { required: false, options: [] },
-      colors: { required: false, options: [] }
-    }
   }
+
+  // Features (addons)
+  if (variations?.features && Array.isArray(variations.features)) {
+    const featuresByType: { [key: string]: any[] } = {}
+    
+    variations.features.forEach((feature: any) => {
+      const type = feature.type || 'general'
+      if (!featuresByType[type]) featuresByType[type] = []
+      featuresByType[type].push({
+        id: feature._id,
+        name: feature.name,
+        price: feature.price || 0,
+        description: feature.description || '',
+        image: feature.image ? urlForImage(feature.image).url() : undefined
+      })
+    })
+    
+    result.features = featuresByType
+  }
+
+  return result
 }
 
-// Transform Sanity categories to match frontend interface
-function transformSanityCategory(sanityCategory: any): Category {
-  return {
-    _id: sanityCategory._id,
-    title: sanityCategory.title,
-    slug: sanityCategory.slug,
-    description: sanityCategory.description || '',
-    image: sanityCategory.image ? urlForImage(sanityCategory.image).url() : '/images/placeholder.jpg',
-    featured: sanityCategory.featured || false,
-    productCount: 0 // Will be calculated
+// Calculate material performance score
+function calculateMaterialPerformanceScore(material: Material): number {
+  const props = material.properties || {}
+  let score = 0
+  let factors = 0
+
+  // Weight performance ratings (1-5 scale)
+  if (props.waterproofRating) {
+    score += props.waterproofRating
+    factors++
   }
+  if (props.uvResistanceRating) {
+    score += props.uvResistanceRating
+    factors++
+  }
+  if (props.tearStrength) {
+    score += props.tearStrength
+    factors++
+  }
+  if (props.abrasionResistance) {
+    score += props.abrasionResistance
+    factors++
+  }
+
+  // Bonus points for special features
+  if (props.fireRetardant) score += 0.5
+  if (props.antimicrobial) score += 0.5
+  if (props.antiStatic) score += 0.3
+
+  return factors > 0 ? Math.min(5, score / factors) : 3
 }
 
-// Get all products from Sanity
-export async function getAllProducts(): Promise<Product[]> {
+// Generate material suitability tags
+function generateMaterialSuitabilityTags(material: Material): string[] {
+  const tags: string[] = []
+  const props = material.properties || {}
+  const apps = material.applications || {}
+  const sustainability = material.sustainability || {}
+
+  // Performance-based tags
+  if (props.waterproofRating && props.waterproofRating >= 4) tags.push('Waterproof')
+  if (props.uvResistanceRating && props.uvResistanceRating >= 4) tags.push('UV Resistant')
+  if (props.tearStrength && props.tearStrength >= 4) tags.push('Heavy Duty')
+  if (props.abrasionResistance && props.abrasionResistance >= 4) tags.push('Long Lasting')
+
+  // Application-based tags
+  if (apps.outdoorUse) tags.push('Outdoor')
+  if (apps.marineUse) tags.push('Marine Grade')
+  if (apps.commercialGrade) tags.push('Commercial')
+
+  // Special features
+  if (props.fireRetardant) tags.push('Fire Retardant')
+  if (props.antimicrobial) tags.push('Antimicrobial')
+  if (props.wipeClean) tags.push('Easy Clean')
+
+  // Sustainability tags
+  if (sustainability.recyclable) tags.push('Recyclable')
+  if (sustainability.ecoFriendly) tags.push('Eco-Friendly')
+  if (sustainability.recycledContent && sustainability.recycledContent > 50) {
+    tags.push('Recycled Content')
+  }
+
+  // SEO flags
+  if (material.seo?.featured) tags.push('Featured')
+  if (material.seo?.newProduct) tags.push('New')
+  if (material.seo?.bestseller) tags.push('Bestseller')
+
+  return tags
+}
+
+// Get single product by slug
+export async function getProduct(slug: string): Promise<Product | null> {
+  const query = `*[_type == "product" && slug.current == $slug][0] {
+    _id,
+    name,
+    slug,
+    description,
+    shortDescription,
+    image,
+    images,
+    categories[]->,
+    basePrice,
+    rating,
+    reviewCount,
+    featured,
+    inStock,
+    sku,
+    tags,
+    currency,
+    variations {
+      styles[] {
+        _id,
+        name,
+        price,
+        description,
+        image,
+        measurements
+      },
+      materials[]-> {
+        _id,
+        title,
+        slug,
+        description,
+        detailedDescription,
+        multiplier,
+        image,
+        gallery,
+        category,
+        tags,
+        technicalSpecs,
+        properties,
+        careInstructions,
+        sustainability,
+        applications,
+        supplier,
+        colors,
+        seo,
+        active,
+        displayOrder
+      },
+      features[] {
+        _id,
+        name,
+        type,
+        price,
+        description,
+        image
+      }
+    },
+    measurements,
+    fileUploads,
+    specialRequests,
+    measurementTips,
+    productType,
+    addons,
+    metaDescription,
+    defaultConfiguration
+  }`
+
   try {
-    const sanityProducts = await getProducts()
-    const transformedProducts = await Promise.all(sanityProducts.map(transformProduct))
-    return transformedProducts
+    const product = await client.fetch(query, { slug })
+    return product ? await transformProduct(product) : null
   } catch (error) {
-    console.error('Error fetching products from Sanity:', error)
-    return []
-  }
-}
-
-// Get product by slug from Sanity
-export async function getProductBySlug(slug: string): Promise<Product | null> {
-  try {
-    console.log('getProductBySlug called with slug:', slug)
-    
-    // Call Sanity function
-    const sanityProduct = await getSanityProductBySlug(slug)
-    
-    console.log('Raw Sanity product data:', JSON.stringify(sanityProduct, null, 2))
-    
-    if (!sanityProduct) {
-      console.log('No product found for slug:', slug)
-      return null
-    }
-    
-    // Check if slug structure is correct
-    if (!sanityProduct.slug || !sanityProduct.slug.current) {
-      console.error('Invalid slug structure:', sanityProduct.slug)
-      return null
-    }
-    
-    // Transform the product
-    console.log('Starting product transformation...')
-    const transformedProduct = await transformProduct(sanityProduct)
-    console.log('Product transformation completed successfully')
-    
-    return transformedProduct
-  } catch (error) {
-    console.error('Error in getProductBySlug for slug:', slug, error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Error fetching product:', error)
     return null
   }
 }
 
-// Get featured products from Sanity
-export async function getFeaturedProducts(): Promise<Product[]> {
+// Get all products with optional filtering
+export async function getProducts({
+  category,
+  featured,
+  limit
+}: {
+  category?: string
+  featured?: boolean
+  limit?: number
+} = {}): Promise<Product[]> {
+  let query = `*[_type == "product"`
+
+  const filters = []
+  if (category) filters.push(`$category in categories[]->slug.current`)
+  if (featured) filters.push(`featured == true`)
+
+  if (filters.length > 0) {
+    query += ` && (${filters.join(' && ')})`
+  }
+
+  query += `] | order(featured desc, _createdAt desc)`
+
+  if (limit) {
+    query += `[0...${limit}]`
+  }
+
+  query += ` {
+    _id,
+    name,
+    slug,
+    description,
+    shortDescription,
+    image,
+    images,
+    categories[]->,
+    basePrice,
+    rating,
+    reviewCount,
+    featured,
+    inStock,
+    sku,
+    tags,
+    currency,
+    variations {
+      styles[] {
+        _id,
+        name,
+        price,
+        description,
+        image,
+        measurements
+      },
+      materials[]-> {
+        _id,
+        title,
+        slug,
+        description,
+        detailedDescription,
+        multiplier,
+        image,
+        gallery,
+        category,
+        tags,
+        technicalSpecs,
+        properties,
+        careInstructions,
+        sustainability,
+        applications,
+        supplier,
+        colors,
+        seo,
+        active,
+        displayOrder
+      },
+      features[] {
+        _id,
+        name,
+        type,
+        price,
+        description,
+        image
+      }
+    },
+    measurements,
+    fileUploads,
+    specialRequests,
+    measurementTips,
+    productType,
+    addons,
+    metaDescription,
+    defaultConfiguration
+  }`
+
   try {
-    const sanityFeatured = await getSanityFeaturedProducts()
-    const transformedProducts = await Promise.all(sanityFeatured.map(transformProduct))
-    return transformedProducts
+    const products = await client.fetch(query, { category })
+    return Promise.all(products.map(transformProduct))
   } catch (error) {
-    console.error('Error fetching featured products:', error)
+    console.error('Error fetching products:', error)
     return []
   }
 }
 
-// Get products by category from Sanity
+// Get products by category
 export async function getProductsByCategory(categorySlug: string): Promise<Product[]> {
-  try {
-    const sanityProducts = await getSanityProductsByCategory(categorySlug)
-    const transformedProducts = await Promise.all(sanityProducts.map(transformProduct))
-    return transformedProducts
-  } catch (error) {
-    console.error('Error fetching products by category:', error)
-    return []
-  }
+  return getProducts({ category: categorySlug })
 }
 
-// Get all categories from Sanity
-export async function getAllCategories(): Promise<Category[]> {
+// Get featured products
+export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
+  return getProducts({ featured: true, limit })
+}
+
+// Get all categories
+export async function getCategories(): Promise<Category[]> {
+  const query = `*[_type == "category"] | order(title asc) {
+    _id,
+    title,
+    slug,
+    description,
+    image,
+    featured,
+    "productCount": count(*[_type == "product" && references(^._id)])
+  }`
+
   try {
-    const sanityCategories = await getCategories()
-    return sanityCategories.map(transformSanityCategory)
+    const categories = await client.fetch(query)
+    return categories.map((category: any) => ({
+      _id: category._id,
+      title: category.title,
+      slug: category.slug,
+      description: category.description || '',
+      image: category.image ? urlForImage(category.image).url() : undefined,
+      featured: category.featured || false,
+      productCount: category.productCount || 0
+    }))
   } catch (error) {
     console.error('Error fetching categories:', error)
     return []
   }
 }
 
-// Search products in Sanity
-export async function searchProducts(query: string): Promise<Product[]> {
+// Get all materials (for enhanced material selection)
+export async function getMaterials(): Promise<Material[]> {
+  const query = `*[_type == "material" && active == true] | order(displayOrder asc, title asc) {
+    _id,
+    title,
+    slug,
+    description,
+    detailedDescription,
+    multiplier,
+    image,
+    gallery,
+    category,
+    tags,
+    technicalSpecs,
+    properties,
+    careInstructions,
+    sustainability,
+    applications,
+    supplier,
+    hasColors,
+    colors,
+    seo,
+    active,
+    displayOrder
+  }`
+
   try {
-    const allProducts = await getAllProducts()
-    const searchTerm = query.toLowerCase()
-    
-    return allProducts.filter(product => {
-      const description = Array.isArray(product.description) 
-        ? product.description.join(' ') 
-        : product.description
-      
-      return (
-        product.name.toLowerCase().includes(searchTerm) ||
-        description.toLowerCase().includes(searchTerm) ||
-        product.categories?.some(cat => cat.title.toLowerCase().includes(searchTerm)) ||
-        product.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
-      )
-    })
+    const materials = await client.fetch(query)
+    return materials.map((material: any) => ({
+      _id: material._id,
+      title: material.title,
+      slug: material.slug,
+      description: material.description,
+      detailedDescription: material.detailedDescription,
+      multiplier: material.multiplier || 1.0,
+      image: material.image ? urlForImage(material.image).url() : undefined,
+      gallery: material.gallery?.map((img: any) => urlForImage(img).url()) || [],
+      category: material.category,
+      tags: material.tags || [],
+      technicalSpecs: material.technicalSpecs,
+      properties: material.properties,
+      careInstructions: material.careInstructions,
+      sustainability: material.sustainability,
+      applications: material.applications,
+      supplier: material.supplier,
+      hasColors: material.hasColors !== false, // Default to true for backward compatibility
+      colors: material.hasColors !== false && material.colors?.map((color: any) => ({
+        name: color.name,
+        colorCode: color.colorCode,
+        hex: color.hex,
+        image: color.image ? urlForImage(color.image).url() : undefined,
+        price: color.price || 0,
+        popularity: color.popularity,
+        fastness: color.fastness,
+        inStock: color.inStock !== false,
+        seasonal: color.seasonal || false
+      })) || [],
+      seo: material.seo,
+      active: material.active !== false,
+      displayOrder: material.displayOrder
+    }))
   } catch (error) {
-    console.error('Error searching products:', error)
+    console.error('Error fetching materials:', error)
     return []
   }
+}
+
+// Alias functions for backward compatibility
+export async function getAllProducts() {
+  return getProducts()
+}
+
+export async function getProductBySlug(slug: string) {
+  return getProduct(slug)
 } 

@@ -26,6 +26,21 @@ export interface Product {
   shortDescription?: string
   addons?: any[]
   metaDescription?: string
+  // Default configuration for instant pricing
+  defaultConfiguration?: {
+    defaultMaterial?: string
+    defaultColor?: string  
+    defaultStyle?: string
+    defaultMeasurements?: {
+      width?: number
+      height?: number
+      customMeasurements?: Array<{
+        measurementId: string
+        value: number
+      }>
+    }
+    showDefaultPrice?: boolean
+  }
   // Legacy support for backward compatibility
   materials?: Material[]
   colors?: Color[]
@@ -39,42 +54,116 @@ export interface Material {
     current: string
   }
   description?: string
+  detailedDescription?: any[] // Rich text content
   multiplier: number
   image?: string
-  weight?: string
-  waterproof?: boolean
-  waterResistant?: boolean
-  uvResistant?: boolean
-  tearResistant?: boolean
-  abrasionResistant?: boolean
+  gallery?: string[]
+  category: MaterialCategory
+  tags?: string[]
+  technicalSpecs?: MaterialTechnicalSpecs
+  properties?: MaterialProperties
+  careInstructions?: MaterialCareInstructions
+  sustainability?: MaterialSustainability
+  applications?: MaterialApplications
+  supplier?: MaterialSupplier
+  hasColors?: boolean // Indicates if material has color options
+  colors?: MaterialColor[] // Optional for clear/transparent materials
+  seo?: MaterialSEO
+  active?: boolean
+  displayOrder?: number
+}
+
+export type MaterialCategory = 
+  | 'canvas' 
+  | 'vinyl' 
+  | 'polyester' 
+  | 'acrylic' 
+  | 'mesh' 
+  | 'marine' 
+  | 'awning' 
+  | 'tarpaulin' 
+  | 'specialty'
+
+export interface MaterialTechnicalSpecs {
+  composition?: string
+  weight?: number // GSM
+  thickness?: number // mm
+  width?: number[] // cm
+  finish?: 'matte' | 'glossy' | 'semi-gloss' | 'textured' | 'embossed'
+  breathability?: 'non-breathable' | 'low' | 'medium' | 'high'
+}
+
+export interface MaterialProperties {
+  weightCategory?: 'lightweight' | 'medium' | 'heavy' | 'extra-heavy'
+  waterproofRating?: number // 1-5
+  uvResistanceRating?: number // 1-5
+  tearStrength?: number // 1-5
+  abrasionResistance?: number // 1-5
+  temperatureResistance?: {
+    minTemp?: number
+    maxTemp?: number
+  }
+  fireRetardant?: boolean
+  antimicrobial?: boolean
+  antiStatic?: boolean
   pvcCoated?: boolean
   wipeClean?: boolean
   warranty?: string
-  useCase?: string
-  colors: MaterialColor[]
-  featured?: boolean
-  active?: boolean
+  certifications?: string[]
+}
+
+export interface MaterialCareInstructions {
+  cleaning?: string
+  storage?: string
+  washable?: boolean
+  dryCleanOnly?: boolean
+  bleachSafe?: boolean
+}
+
+export interface MaterialSustainability {
+  recyclable?: boolean
+  recycledContent?: number // percentage
+  biodegradable?: boolean
+  ecoFriendly?: boolean
+  carbonFootprint?: 'low' | 'medium' | 'high'
+  sustainabilityCertifications?: string[]
+}
+
+export interface MaterialApplications {
+  recommended?: string[]
+  notRecommended?: string[]
+  indoorUse?: boolean
+  outdoorUse?: boolean
+  commercialGrade?: boolean
+  marineUse?: boolean
+}
+
+export interface MaterialSupplier {
+  supplierName?: string
+  supplierCode?: string
+  leadTime?: string
+  minimumOrder?: number
+  stockLevel?: 'in-stock' | 'low-stock' | 'out-of-stock' | 'special-order'
 }
 
 export interface MaterialColor {
   name: string
+  colorCode?: string
   hex: string
   image?: string
   price: number
+  popularity?: number // 1-5
+  fastness?: number // 1-5
   inStock: boolean
+  seasonal?: boolean
 }
 
-export interface MaterialProperties {
-  weight?: string
-  waterproof?: boolean
-  waterResistant?: boolean
-  tearResistant?: boolean
-  abrasionResistant?: boolean
-  uvResistant?: string | boolean
-  pvcCoated?: boolean
-  wipeClean?: boolean
-  warranty?: string
-  useCase?: string
+export interface MaterialSEO {
+  metaDescription?: string
+  keywords?: string[]
+  featured?: boolean
+  newProduct?: boolean
+  bestseller?: boolean
 }
 
 // Enhanced Color interface (now part of MaterialColor)
@@ -119,10 +208,22 @@ export interface VariationOptionItem {
 export interface Measurement {
   id: string
   name: string
+  group?: string
+  order?: number
   required: boolean
   unit: string
   placeholder: string
   type: string
+  role?: string
+  helpText?: string
+  defaultValue?: number
+  minValue?: number
+  maxValue?: number
+  dependsOn?: string
+  options?: Array<{
+    label: string
+    value: string
+  }>
 }
 
 export interface FileUpload {

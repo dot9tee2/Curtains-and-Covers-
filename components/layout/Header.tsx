@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, ShoppingCart, Menu, X, Phone, User } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, Phone, User, PackageSearch } from 'lucide-react';
 import Logo from './Logo';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const { getTotals } = useCart();
@@ -13,15 +14,7 @@ const Header = () => {
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Categories', href: '/categories' },
-    { name: 'Custom Product', href: '/product' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-  ];
+  const { user } = useAuth();
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
@@ -56,68 +49,67 @@ const Header = () => {
       </div>
 
       {/* Main Header */}
-      <div className="container-custom py-4">
-        <div className="flex items-center justify-between">
+      <div className="container-custom py-2">
+        <div className="flex items-center justify-between gap-4 min-h-[56px] w-full">
           {/* Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center min-w-0 flex-shrink-0">
             <Logo />
           </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-gray-700 hover:text-primary transition-colors font-medium"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-
+          {/* Search Bar (centered, always visible) */}
+          <div className="flex-1 flex justify-center px-4">
+            <form className="w-full max-w-lg">
+              <div className="relative flex">
+                <input
+                  type="text"
+                  placeholder="Search for products..."
+                  className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-primary focus:border-primary text-base"
+                />
+                <button
+                  type="submit"
+                  className="bg-primary hover:bg-primary-700 text-white px-4 rounded-r-lg flex items-center justify-center transition-colors"
+                  aria-label="Search"
+                >
+                  <Search size={20} />
+                </button>
+              </div>
+            </form>
+          </div>
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Search */}
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="p-2 text-gray-600 hover:text-primary transition-colors"
-              aria-label="Search"
+          <div className="flex items-center space-x-4 flex-shrink-0">
+            {/* Order Tracking */}
+            <Link
+              href="/order-tracking"
+              className="flex flex-col items-center text-gray-600 hover:text-secondary transition-colors text-xs"
+              aria-label="Order Tracking"
             >
-              <Search size={20} />
-            </button>
-
+              <PackageSearch size={22} />
+              <span className="mt-1 font-medium">Order Tracking</span>
+            </Link>
             {/* Account */}
             <Link
-              href="/account"
-              className="hidden md:flex p-2 text-gray-600 hover:text-primary transition-colors"
+              href={user ? "/profile" : "/signin"}
+              className="flex flex-col items-center text-gray-600 hover:text-secondary transition-colors text-xs"
               aria-label="Account"
             >
-              <User size={20} />
+              <User size={22} />
+              <span className="mt-1 font-medium">My Account</span>
             </Link>
-
             {/* Cart */}
             <Link
               href="/cart"
-              className="relative p-2 text-gray-600 hover:text-primary transition-colors"
+              className="flex flex-col items-center relative text-gray-600 hover:text-secondary transition-colors text-xs"
               aria-label="Shopping Cart"
             >
-              <ShoppingCart size={20} />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-secondary text-primary text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                  {itemCount > 99 ? '99+' : itemCount}
-                </span>
-              )}
+              <div className="relative">
+                <ShoppingCart size={22} />
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-secondary text-primary text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold border-2 border-white">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </div>
+              <span className="mt-1 font-medium">My Cart</span>
             </Link>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:text-primary transition-colors"
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
           </div>
         </div>
       </div>
@@ -155,26 +147,7 @@ const Header = () => {
         >
           <div className="container-custom py-4">
             <nav className="flex flex-col space-y-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              <div className="pt-4 border-t">
-                <Link
-                  href="/account"
-                  className="flex items-center space-x-2 text-gray-700 hover:text-primary transition-colors font-medium py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <User size={18} />
-                  <span>My Account</span>
-                </Link>
-              </div>
+              {/* No navigation links in mobile menu */}
             </nav>
           </div>
         </motion.div>

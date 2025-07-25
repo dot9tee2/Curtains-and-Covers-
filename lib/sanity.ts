@@ -5,7 +5,7 @@ import imageUrlBuilder from '@sanity/image-url'
 export const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'idc6hzzx',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2023-12-01',
+  apiVersion: '2025-02-19',
   useCdn: process.env.NODE_ENV === 'production', // Use CDN for production
 })
 

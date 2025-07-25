@@ -10,6 +10,7 @@ import MeasurementForm from './configurator/MeasurementForm'
 import FileUpload from './configurator/FileUpload'
 import SpecialRequests from './configurator/SpecialRequests'
 import PriceDisplay from './configurator/PriceDisplay'
+import { getDefaultConfiguration } from '@/lib/defaultConfiguration'
 
 interface ProductConfiguratorProps {
   product: Product
@@ -36,8 +37,23 @@ function calculateProductPrice(
       total: 0
     }
 
-    // Calculate material price
-    if (configuration.selections.material) {
+    // Get style-specific measurements for area calculation
+    const styleMeasurements = getStyleMeasurements(product, configuration)
+    
+    // Calculate area using enhanced calculation system
+    let area = 0
+    let areaFormula = ''
+    
+    if (styleMeasurements.length > 0) {
+      // Import the calculation function dynamically or use a simple version
+      area = calculateAreaFromMeasurements(configuration.measurements, styleMeasurements)
+      if (area > 0) {
+        areaFormula = `Area: ${area.toFixed(2)} sq ft`
+      }
+    }
+
+    // Calculate material price based on area
+    if (configuration.selections.material && area > 0) {
       let selectedMaterial = null
       
       // Check new variations structure first
@@ -47,15 +63,18 @@ function calculateProductPrice(
         )
       }
       
-      // Handle material price - materials themselves don't have prices, but their colors do
+      // Calculate material cost: area × material price per unit × multiplier
       if (selectedMaterial) {
-        // For legacy materials, we don't add material price as it's handled through color selection
-        breakdown.materialPrice = 0
+        // For now, use a base price per sq ft (this should come from material data)
+        const basePricePerSqFt = 15 // Default price per sq ft
+        const materialMultiplier = 1.0 // This should come from material data
+        breakdown.materialPrice = area * basePricePerSqFt * materialMultiplier
+        totalPrice += breakdown.materialPrice
       }
     }
 
     // Calculate color price (if any)
-    if (configuration.selections.color) {
+    if (configuration.selections.color && area > 0) {
       let selectedColor = null
       if (product.variations?.colors) {
         selectedColor = product.variations.colors.options.find(
@@ -63,9 +82,11 @@ function calculateProductPrice(
         )
       }
       if (selectedColor && selectedColor.price && selectedColor.price > 0) {
-        breakdown.variationPrices!['color'] = selectedColor.price
-        breakdown.addOnsTotal += selectedColor.price
-        totalPrice += selectedColor.price
+        // Color price can be per sq ft or flat rate
+        const colorPrice = selectedColor.price * area
+        breakdown.variationPrices!['color'] = colorPrice
+        breakdown.addOnsTotal += colorPrice
+        totalPrice += colorPrice
       }
     }
 
@@ -76,6 +97,7 @@ function calculateProductPrice(
         if (selectedOptionId) {
           const selectedOption = feature.options.find(option => option.id === selectedOptionId)
           if (selectedOption && selectedOption.price && selectedOption.price > 0) {
+            // Most features are flat rate
             breakdown.variationPrices![featureKey] = selectedOption.price
             breakdown.addOnsTotal += selectedOption.price
             totalPrice += selectedOption.price
@@ -98,6 +120,7 @@ function calculateProductPrice(
     return {
       breakdown: {
         basePrice: 0,
+        materialPrice: 0,
         addOnsTotal: 0,
         subtotal: 0,
         tax: 0,
@@ -107,6 +130,45 @@ function calculateProductPrice(
       errors: ['Error calculating price']
     }
   }
+}
+
+// Simple area calculation function (fallback)
+function calculateAreaFromMeasurements(
+  measurements: { [key: string]: number | string },
+  measurementDefinitions: Measurement[]
+): number {
+  // Try to find width and height measurements
+  let width = 0
+  let height = 0
+  
+  // Look for common measurement roles
+  measurementDefinitions.forEach(def => {
+    const value = measurements[def.id]
+    if (typeof value === 'number' && value > 0) {
+      if (def.role === 'width' && width === 0) {
+        width = value
+      } else if (def.role === 'height' && height === 0) {
+        height = value
+      } else if (def.role === 'diameter') {
+        // For circular shapes, calculate area = π × r²
+        const radius = value / 2
+        return Math.PI * Math.pow(radius / 12, 2) // Convert inches to feet
+      }
+    }
+  })
+  
+  // If we have width and height, calculate rectangular area
+  if (width > 0 && height > 0) {
+    return (width * height) / 144 // Convert square inches to square feet
+  }
+  
+  // Fallback: use first two numeric measurements
+  const numericValues = Object.values(measurements).filter(v => typeof v === 'number' && v > 0) as number[]
+  if (numericValues.length >= 2) {
+    return (numericValues[0] * numericValues[1]) / 144
+  }
+  
+  return 0
 }
 
 // Validate product configuration
@@ -181,13 +243,16 @@ function getConfigurationErrors(
       errors.push('Material selection is required')
     }
 
-    // Check required colors (only if material is selected and has colors)
-    if (configuration.selections.material) {
+      // Check required colors (only if material is selected and has colors)
+  if (configuration.selections.material) {
+    const selectedMaterial = product.materials?.find(m => m._id === configuration.selections.material)
+    if (selectedMaterial?.hasColors !== false) {
       const availableColors = getColorsForSelectedMaterial(product, configuration)
       if (availableColors.length > 0 && !configuration.selections.color) {
-      errors.push('Color selection is required')
+        errors.push('Color selection is required')
       }
     }
+  }
 
     // Check required features
     if (product.variations.features) {
@@ -233,13 +298,9 @@ export default function ProductConfigurator({
 }: ProductConfiguratorProps) {
 
 
-  const [configuration, setConfiguration] = useState<ProductConfiguration>({
-    productId: product.id,
-    selections: {},
-    measurements: {},
-    files: [],
-    specialRequests: ''
-  })
+  const [configuration, setConfiguration] = useState<ProductConfiguration>(
+    () => getDefaultConfiguration(product)
+  )
 
   const [pricing, setPricing] = useState<PriceCalculationResult>({
     breakdown: {
@@ -255,9 +316,14 @@ export default function ProductConfigurator({
 
   const [activeSection, setActiveSection] = useState<string>('style')
 
+  // Calculate initial pricing on mount with default configuration
+  useEffect(() => {
+    const initialPricing = calculateProductPrice(product, configuration)
+    setPricing(initialPricing)
+    onConfigurationChange?.(configuration, initialPricing)
+  }, []) // Run once on mount
 
-
-  // Calculate pricing whenever configuration changes
+  // Calculate pricing whenever configuration changes (after initial load)
   useEffect(() => {
     const newPricing = calculateProductPrice(product, configuration)
     setPricing(newPricing)
@@ -280,6 +346,38 @@ export default function ProductConfigurator({
       }))
     }
   }, [configuration.selections.branding])
+
+  // Clear measurements when style changes (they may no longer be relevant)
+  useEffect(() => {
+    if (!configuration.selections.style) return
+    
+    const currentStyleMeasurements = getStyleMeasurements(product, configuration)
+    const currentMeasurementIds = currentStyleMeasurements.map(m => m.id)
+    
+    // Keep only measurements that are still relevant to the new style
+    const filteredMeasurements: { [key: string]: number | string } = {}
+    Object.entries(configuration.measurements).forEach(([key, value]) => {
+      if (currentMeasurementIds.includes(key)) {
+        filteredMeasurements[key] = value
+      }
+    })
+
+    // Add default values for new measurements
+    currentStyleMeasurements.forEach(measurement => {
+      if (!filteredMeasurements[measurement.id] && measurement.defaultValue) {
+        filteredMeasurements[measurement.id] = measurement.defaultValue
+      }
+    })
+
+    // Only update if measurements actually changed
+    const measurementsChanged = JSON.stringify(filteredMeasurements) !== JSON.stringify(configuration.measurements)
+    if (measurementsChanged) {
+      setConfiguration(prev => ({
+        ...prev,
+        measurements: filteredMeasurements
+      }))
+    }
+  }, [configuration.selections.style, product])
 
   // Clear color selection when material changes
   useEffect(() => {
@@ -337,7 +435,10 @@ export default function ProductConfigurator({
   const sections = [
     { id: 'style', name: 'Style', required: product.variations?.styles?.required },
     { id: 'material', name: 'Material', required: product.variations?.materials?.options && product.variations.materials.options.length > 0 },
-    { id: 'color', name: 'Color', required: configuration.selections.material && getColorsForSelectedMaterial(product, configuration).length > 0 },
+    { id: 'color', name: 'Color', required: configuration.selections.material && (() => {
+      const selectedMaterial = product.materials?.find(m => m._id === configuration.selections.material)
+      return selectedMaterial?.hasColors !== false && getColorsForSelectedMaterial(product, configuration).length > 0
+    })() },
     { id: 'features', name: 'Features', required: false },
     { id: 'measurements', name: 'Measurements', required: getStyleMeasurements(product, configuration).some(m => m.required) },
     ...(isCustomBrandingSelected(configuration) ? [{ id: 'uploads', name: 'Files', required: true }] : []),
@@ -353,7 +454,10 @@ export default function ProductConfigurator({
             const isActive = activeSection === section.id
             const isCompleted = section.id === 'style' && configuration.selections.style ||
                               section.id === 'material' && (configuration.selections.material || !product.variations?.materials?.options || product.variations.materials.options.length === 0) ||
-                              section.id === 'color' && (configuration.selections.color || !configuration.selections.material || getColorsForSelectedMaterial(product, configuration).length === 0) ||
+                              section.id === 'color' && (configuration.selections.color || !configuration.selections.material || (() => {
+        const selectedMaterial = product.materials?.find(m => m._id === configuration.selections.material)
+        return selectedMaterial?.hasColors === false || getColorsForSelectedMaterial(product, configuration).length === 0
+      })()) ||
                               section.id === 'features' && (() => {
                                 // Features section is always completed since it's optional
                                 // Users can choose to select or not select features
@@ -410,6 +514,7 @@ export default function ProductConfigurator({
                   options={product.variations.materials}
                   selected={configuration.selections.material}
                   onChange={(value) => updateSelection('material', value)}
+                  materials={product.materials}
                 />
               ) : (
                 <div className="space-y-6">
@@ -665,8 +770,12 @@ export default function ProductConfigurator({
         <div className="lg:col-span-1">
           <div className="sticky top-6">
             <PriceDisplay 
-              pricing={pricing}
-              currency={product.currency || 'EUR'}
+              breakdown={pricing.breakdown}
+              isValid={pricing.isValid}
+              errors={pricing.errors}
+              onAddToCart={handleAddToCart}
+              isAddingToCart={isAddingToCart}
+              showSuccess={showSuccess}
             />
             
             {/* Validation Errors */}

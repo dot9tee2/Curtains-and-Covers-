@@ -535,22 +535,66 @@ export default function HomePageClient({
 
                       {/* Features/Materials Preview */}
                       {product.materials && product.materials.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Materials Available</p>
-                          <div className="flex flex-wrap gap-1">
-                            {product.materials.slice(0, 3).map((material: any, idx: number) => (
-                              <span
-                                key={idx}
-                                className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-lg font-medium"
-                              >
-                                {material.name || material}
-                              </span>
-                            ))}
-                            {product.materials.length > 3 && (
-                              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-lg font-medium">
-                                +{product.materials.length - 3} more
-                              </span>
-                            )}
+                        <div className="mb-4 space-y-3">
+                          {/* Material Categories */}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Material Types</p>
+                            <div className="flex flex-wrap gap-1">
+                              {(Array.from(new Set(product.materials.map((m: any) => m.category).filter(Boolean))) as string[]).slice(0, 3).map((category: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-lg font-medium capitalize"
+                                >
+                                  {category}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Performance Highlights */}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Key Features</p>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const features = new Set<string>();
+                                product.materials.forEach((material: any) => {
+                                  const props = material.properties;
+                                  const apps = material.applications;
+                                  if (props?.waterproofRating >= 4) features.add('Waterproof');
+                                  if (props?.uvResistanceRating >= 4) features.add('UV Resistant');
+                                  if (apps?.marineUse) features.add('Marine Grade');
+                                  if (material.sustainability?.ecoFriendly) features.add('Eco-Friendly');
+                                });
+                                return Array.from(features).slice(0, 3);
+                              })().map((feature: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded-lg font-medium"
+                                >
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Specific Materials */}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Available Materials</p>
+                            <div className="flex flex-wrap gap-1">
+                              {product.materials.slice(0, 2).map((material: any, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-lg font-medium"
+                                >
+                                  {material.title || material.name || material}
+                                </span>
+                              ))}
+                              {product.materials.length > 2 && (
+                                <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-lg font-medium">
+                                  +{product.materials.length - 2} more
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}

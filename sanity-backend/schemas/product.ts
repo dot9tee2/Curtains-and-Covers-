@@ -172,13 +172,42 @@ export default {
                               name: 'id',
                               title: 'Measurement ID',
                               type: 'string',
-                              validation: (Rule: any) => Rule.required()
+                              validation: (Rule: any) => Rule.required(),
+                              description: 'Unique identifier (e.g., panel1_width, corner_radius)'
                             },
                             {
                               name: 'name',
-                              title: 'Measurement Name',
+                              title: 'Display Name',
                               type: 'string',
-                              validation: (Rule: any) => Rule.required()
+                              validation: (Rule: any) => Rule.required(),
+                              description: 'What customer sees (e.g., "Panel 1 Width", "Corner Radius")'
+                            },
+                            {
+                              name: 'group',
+                              title: 'Measurement Group',
+                              type: 'string',
+                              options: {
+                                list: [
+                                  { title: 'Main Dimensions', value: 'main' },
+                                  { title: 'Panel 1', value: 'panel1' },
+                                  { title: 'Panel 2', value: 'panel2' },
+                                  { title: 'Panel 3', value: 'panel3' },
+                                  { title: 'Panel 4', value: 'panel4' },
+                                  { title: 'Corners & Curves', value: 'corners' },
+                                  { title: 'Hardware Placement', value: 'hardware' },
+                                  { title: 'Special Features', value: 'special' },
+                                  { title: 'Installation Details', value: 'installation' }
+                                ]
+                              },
+                              initialValue: 'main',
+                              description: 'Group related measurements together'
+                            },
+                            {
+                              name: 'order',
+                              title: 'Display Order',
+                              type: 'number',
+                              initialValue: 1,
+                              description: 'Order within the group (1, 2, 3...)'
                             },
                             {
                               name: 'required',
@@ -190,12 +219,16 @@ export default {
                               name: 'unit',
                               title: 'Unit',
                               type: 'string',
+                              options: {
+                                list: [
+                                  { title: 'Inches', value: 'inches' },
+                                  { title: 'Feet', value: 'feet' },
+                                  { title: 'Centimeters', value: 'cm' },
+                                  { title: 'Meters', value: 'meters' },
+                                  { title: 'Degrees', value: 'degrees' }
+                                ]
+                              },
                               initialValue: 'inches'
-                            },
-                            {
-                              name: 'placeholder',
-                              title: 'Placeholder Text',
-                              type: 'string'
                             },
                             {
                               name: 'type',
@@ -204,27 +237,109 @@ export default {
                               options: {
                                 list: [
                                   { title: 'Number', value: 'number' },
-                                  { title: 'Text', value: 'text' }
+                                  { title: 'Text', value: 'text' },
+                                  { title: 'Dropdown', value: 'select' }
                                 ]
                               },
                               initialValue: 'number'
+                            },
+                            {
+                              name: 'role',
+                              title: 'Calculation Role',
+                              type: 'string',
+                              options: {
+                                list: [
+                                  { title: 'Width/Length', value: 'width' },
+                                  { title: 'Height/Drop', value: 'height' },
+                                  { title: 'Diameter', value: 'diameter' },
+                                  { title: 'Radius', value: 'radius' },
+                                  { title: 'Side Measurement', value: 'side' },
+                                  { title: 'Angle', value: 'angle' },
+                                  { title: 'Curve', value: 'curve' },
+                                  { title: 'Offset', value: 'offset' },
+                                  { title: 'Other', value: 'other' }
+                                ]
+                              },
+                              description: 'How this measurement affects area calculation'
+                            },
+                            {
+                              name: 'placeholder',
+                              title: 'Placeholder Text',
+                              type: 'string',
+                              description: 'Helpful example (e.g., "Enter width in inches")'
+                            },
+                            {
+                              name: 'helpText',
+                              title: 'Help Text',
+                              type: 'text',
+                              description: 'Detailed instructions for this specific measurement'
+                            },
+                            {
+                              name: 'defaultValue',
+                              title: 'Default Value',
+                              type: 'number',
+                              description: 'Default value for this measurement (optional)'
+                            },
+                            {
+                              name: 'minValue',
+                              title: 'Minimum Value',
+                              type: 'number',
+                              description: 'Minimum allowed value'
+                            },
+                            {
+                              name: 'maxValue',
+                              title: 'Maximum Value',
+                              type: 'number',
+                              description: 'Maximum allowed value'
+                            },
+                            {
+                              name: 'dependsOn',
+                              title: 'Depends On',
+                              type: 'string',
+                              description: 'Show only if another measurement has a specific value'
+                            },
+                            {
+                              name: 'options',
+                              title: 'Dropdown Options',
+                              type: 'array',
+                              of: [
+                                {
+                                  type: 'object',
+                                  fields: [
+                                    {
+                                      name: 'label',
+                                      title: 'Label',
+                                      type: 'string',
+                                      validation: (Rule: any) => Rule.required()
+                                    },
+                                    {
+                                      name: 'value',
+                                      title: 'Value',
+                                      type: 'string',
+                                      validation: (Rule: any) => Rule.required()
+                                    }
+                                  ]
+                                }
+                              ],
+                              hidden: ({ parent }: { parent: any }) => parent?.type !== 'select'
                             }
                           ],
                           preview: {
                             select: {
                               title: 'name',
-                              subtitle: 'unit'
+                              subtitle: 'group',
+                              description: 'required'
                             },
                             prepare(selection: any) {
                               return {
                                 title: selection.title,
-                                subtitle: `Unit: ${selection.subtitle}`
+                                subtitle: `${selection.subtitle} ${selection.description ? '(Required)' : '(Optional)'}`
                               }
                             }
                           }
                         }
                       ],
-                      description: 'Custom measurements required for this specific style (overrides product-level measurements)'
+                      description: 'All measurements required for this style - supports complex products with many measurements'
                     }
                   ],
                   preview: {
@@ -468,8 +583,6 @@ export default {
       validation: (Rule: any) => Rule.required()
     },
 
-
-
     // Measurement Tips
     {
       name: 'measurementTips',
@@ -570,6 +683,91 @@ export default {
       ]
     },
 
+    // Default Configuration
+    {
+      name: 'defaultConfiguration',
+      title: 'Default Configuration',
+      type: 'object',
+      description: 'Default selections to show customers a starting price',
+      fields: [
+        {
+          name: 'defaultMaterial',
+          title: 'Default Material',
+          type: 'string', 
+          description: 'Material ID to select by default (most popular option)'
+        },
+        {
+          name: 'defaultColor',
+          title: 'Default Color', 
+          type: 'string',
+          description: 'Color ID to select by default'
+        },
+        {
+          name: 'defaultStyle',
+          title: 'Default Style',
+          type: 'string',
+          description: 'Style ID to select by default'
+        },
+        {
+          name: 'defaultMeasurements',
+          title: 'Default Measurements',
+          type: 'object',
+          description: 'Typical measurements for this product (e.g., 6ft x 4ft)',
+          fields: [
+            {
+              name: 'width',
+              title: 'Default Width',
+              type: 'number',
+              description: 'Default width in inches',
+              initialValue: 72
+            },
+            {
+              name: 'height', 
+              title: 'Default Height',
+              type: 'number',
+              description: 'Default height in inches',
+              initialValue: 48
+            },
+            {
+              name: 'customMeasurements',
+              title: 'Custom Default Measurements',
+              type: 'array',
+              of: [
+                {
+                  type: 'object',
+                  fields: [
+                    {
+                      name: 'measurementId',
+                      title: 'Measurement ID',
+                      type: 'string',
+                      description: 'Must match a measurement ID from style options'
+                    },
+                    {
+                      name: 'value',
+                      title: 'Default Value',
+                      type: 'number'
+                    }
+                  ]
+                }
+              ],
+              description: 'Default values for specific measurements'
+            }
+          ]
+        },
+        {
+          name: 'showDefaultPrice',
+          title: 'Show Default Price',
+          type: 'boolean',
+          initialValue: true,
+          description: 'Whether to show default pricing immediately'
+        }
+      ],
+      options: {
+        collapsible: true,
+        collapsed: false
+      }
+    },
+
     // Product Status
     {
       name: 'featured',
@@ -633,9 +831,9 @@ export default {
       const categoryText = categories && categories.length > 0 ? 'Categorized' : 'No category'
       return {
         title: title,
-        subtitle: `${categoryText} • Complex Product • ${price}`,
+        subtitle: `${categoryText} • Enhanced Product • ${price}`,
         media: media
       }
     }
   }
-} 
+}
